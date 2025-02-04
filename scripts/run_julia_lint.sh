@@ -66,6 +66,7 @@ julia --project=$STATICLINTPATH -e "
   @info \"Running lint on \$(length(all_files)) files\"
 
   formatter = StaticLint.PreCommitFormat()
+  # context = LintContext([\"LogStatementsMustBeSafe\"])
   context = LintContext()
 
   # Run lint on all files

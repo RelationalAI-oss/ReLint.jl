@@ -41,4 +41,19 @@
         @test count_lint_errors(source; context=LintContext(["LogStatementsMustBeSafe"])) == 0
         @test count_lint_errors(source; context=LintContext(["UnsafeRule"])) == 1
     end
+
+    @testset "File in a dir" begin
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io
+                write(io, "function f()\n  @async 1 + 1\nend\n")
+                flush(io)
+
+                @test has_values(StaticLint.run_lint(dir; io), 1, 1, 0)
+
+                context=LintContext([])
+                @test has_values(StaticLint.run_lint(dir; io, context), 1, 0, 0)
+
+            end
+        end
+    end
 end

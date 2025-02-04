@@ -9,9 +9,6 @@ mutable struct LintMeta
     LintMeta(v) = new(v)
 end
 
-# include("linting/checks.jl")
-
 include("linting/extended_checks.jl")
-
 include("interface.jl")
 end

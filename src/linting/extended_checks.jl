@@ -29,6 +29,7 @@ struct LintContext
     end
 
     LintContext(s::Vector{DataType}) = new(s)
+    LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s))
     LintContext() = new(all_extended_rule_types[])
 end
 
@@ -76,7 +77,12 @@ function collect_lint_report(x::EXPR, isquoted=false, errs=Tuple{Int,EXPR}[], po
 
     errs
 end
-function check_all(x::EXPR, markers::Dict{Symbol,String}=Dict{Symbol,String}())
+
+function check_all(
+    x::EXPR,
+    markers::Dict{Symbol,String} =Dict{Symbol,String}(),
+    context::LintContext=LintContext()
+)
     # Setting up the markers
     if headof(x) === :const
         markers[:const] = fetch_value(x, :IDENTIFIER)
@@ -93,7 +99,7 @@ function check_all(x::EXPR, markers::Dict{Symbol,String}=Dict{Symbol,String}())
         end
     end
 
-    for T in all_extended_rule_types[]
+    for T in context.rules_to_run
         check_with_process(T, x, markers)
         if haserror(x) && x.meta.error isa LintRuleReport
             lint_rule_report = x.meta.error
@@ -105,7 +111,7 @@ function check_all(x::EXPR, markers::Dict{Symbol,String}=Dict{Symbol,String}())
 
     if x.args !== nothing
         for i in 1:length(x.args)
-            check_all(x.args[i], markers)
+            check_all(x.args[i], markers, context)
         end
     end
 

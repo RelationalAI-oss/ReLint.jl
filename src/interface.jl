@@ -71,20 +71,16 @@ end
 
 
 """
-    lint_file(rootpath, server)
+    lint_file(rootpath, context)
 
-Read a file from disc, parse and run a semantic pass over it. The file should be the
-root of a project, e.g. for this package that file is `src/StaticLint.jl`. Other files
-in the project will be loaded automatically (calls to `include` with complicated arguments
-are not handled, see `followinclude` for details). A `FileServer` will be returned
-containing the `File`s of the package.
+
 """
-function lint_file(rootpath)
+function lint_file(rootpath, context::LintContext)
     file_content_string = open(io->read(io, String), rootpath, "r")
     ast = CSTParser.parse(file_content_string, true)
 
     markers::Dict{Symbol,String} = Dict(:filename => rootpath)
-    check_all(ast, markers)
+    check_all(ast, markers, context)
 
     lint_rule_reports = []
 
@@ -383,7 +379,7 @@ function run_lint(
     endswith(rootpath, ".jl") || return result
 
     # We are running Lint on a Julia file
-    _,_,lint_reports = StaticLint.lint_file(rootpath)
+    _,_,lint_reports = StaticLint.lint_file(rootpath, context)
     print_header(formatter, io, rootpath)
 
     is_recommendation(r::LintRuleReport) = r.rule isa RecommendationLintRule
@@ -449,7 +445,7 @@ function run_lint_on_text(
     open(tmp_file_name, "w") do file
         write(file, source)
         flush(file)
-        run_lint(tmp_file_name; result, io, io_violations, io_recommendations, formatter)
+        run_lint(tmp_file_name; result, io, io_violations, io_recommendations, formatter, context)
     end
 
     print(io, String(take!(io_violations)))
@@ -537,7 +533,7 @@ function generate_report(
     file_prefix_to_remove::String="",
     analyze_all_file_found_locally::Bool=false,
     stream_workflowcommand::IO=stdout,
-    rules_to_consider::Vector{DataType}=all_extended_rule_types[],
+    rules_to_run::Vector{DataType}=all_extended_rule_types[],
 )
     if isfile(output_filename)
         @error "File $(output_filename) exist already."
@@ -584,8 +580,8 @@ function generate_report(
         io_recommendations = IOBuffer()
 
 
-        context = LintContext(rules_to_consider)
-        # @info "Will check rules:" rules_to_consider
+        context = LintContext(rules_to_run)
+        # @info "Will check rules:" rules_to_run
 
         # RUN LINT!!!
         for filename in julia_filenames

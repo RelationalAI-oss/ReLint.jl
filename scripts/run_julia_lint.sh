@@ -54,7 +54,7 @@ julia --project=$STATICLINTPATH -e "
   import Pkg
   Pkg.instantiate()
 
-  using StaticLint
+  using StaticLint: StaticLint, LintContext
   result = StaticLint.LintResult()
   all_files_tmp=split(open(io->read(io, String), \"$FILES_TO_RUN\", \"r\"))
   # convert substring into string

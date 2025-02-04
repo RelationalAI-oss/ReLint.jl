@@ -247,7 +247,7 @@ function _run_lint_on_dir(
     io_violations::Union{IO,Nothing}=nothing,
     io_recommendations::Union{IO,Nothing}=nothing,
     formatter::AbstractFormatter=PlainFormat(),
-    # context::LintContext
+    context::LintContext=LintContext()
 )
     # Exit if we are in .git
     !isnothing(match(r".*/\.git.*", rootpath)) && return result
@@ -256,14 +256,14 @@ function _run_lint_on_dir(
         for file in files
             filename = joinpath(root, file)
             if endswith(filename, ".jl")
-                run_lint(filename; result, io, io_violations, io_recommendations, formatter)
+                run_lint(filename; result, io, io_violations, io_recommendations, formatter, context)
             end
         end
 
         for dir in dirs
             p = joinpath(root, dir)
             !isnothing(match(r".*/\.git.*", p)) && continue
-            _run_lint_on_dir(p; result, io, io_violations, io_recommendations, formatter)
+            _run_lint_on_dir(p; result, io, io_violations, io_recommendations, formatter, context)
         end
     end
     return result
@@ -372,7 +372,7 @@ function run_lint(
     rootpath in result.linted_files && return result
 
     # If we are running Lint on a directory
-    isdir(rootpath) && return _run_lint_on_dir(rootpath; result, io, io_violations, io_recommendations, formatter)
+    isdir(rootpath) && return _run_lint_on_dir(rootpath; result, io, io_violations, io_recommendations, formatter, context)
 
     # Check if we have to be run on a Julia file. Simply exit if not.
     # This simplify the amount of work in GitHub Action

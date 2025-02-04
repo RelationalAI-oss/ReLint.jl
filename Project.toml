@@ -1,0 +1,23 @@
+name = "StaticLint"
+uuid = "b3cc710f-9c33-5bdb-a03d-a94903873e97"
+version = "8.2.0"
+
+[deps]
+CSTParser = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[compat]
+CSTParser = "3.3"
+julia = "1"
+
+[extras]
+LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Pkg", "SHA", "LibGit2"]

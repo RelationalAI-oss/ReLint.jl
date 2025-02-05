@@ -3,12 +3,15 @@
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Run lint on a set of files, provided as arguments.
 # Result are printed in the stdout, if a fatal violation is found, then exit with 1
-# For example:
+# A rule can be specified using --rule NAME_OF_A_RULE
+# If no rule is provided, then run all the rules.
 
-# pwd                                                                                                                       3444ms  Tue Feb  4 11:33:16 2025
+# EXAMPLE1:
+
+# pwd
 # /Users/alexandrebergel/Documents/RAI/ReLint.jl
 
-# ./scripts/run_lint_locally.sh /Users/alexandrebergel/Documents/RAI/raicode21/src/*.jl                                                  Tue Feb  4 11:33:21 2025
+# ./scripts/run_lint_locally.sh /Users/alexandrebergel/Documents/RAI/raicode21/src/*.jl
 # FULLNAME SCRIPT ./scripts/run_lint_locally.sh
 # STATICLINT PATH= ./scripts/..
 # CURRENT PATH= /Users/alexandrebergel/Documents/RAI/ReLint.jl
@@ -21,13 +24,41 @@
 # ┌ Error: Fatal error discovered
 # └ @ Main none:25
 
+# EXAMPLE2:
+# ./scripts/run_julia_lint.sh /Users/alexandrebergel/Documents/RAI/raicode4/ --rule LogStatementsMustBeSafe
+
+# EXAMPLE3:
+# ./scripts/run_julia_lint.sh /Users/alexandrebergel/Documents/RAI/raicode4/
+
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# PARSE ARGUMENTS
+RULE=""
+FILES_TO_RUN_FROM_COMMAND_LINE=""
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -r|--rule)
+      RULE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      FILES_TO_RUN_FROM_COMMAND_LINE+="$1 " # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
 
 # temporary file containing all the files on which lint has to run.
 FILES_TO_RUN=$(mktemp)
 
 # If no argument is provided, then we simply use the files staged
-if [[ $# -eq 0 ]] ; then
+if [[ -z "$FILES_TO_RUN_FROM_COMMAND_LINE" ]] ; then
     echo 'No argument provided, running on staged files'
     FILES_LOCALLY_ADDED=`git status --porcelain | awk 'match($1, "A"){print $2}'`
     FILES_LOCALLY_MODIFIED=`git status --porcelain | awk 'match($1, "M"){print $2}'`
@@ -35,19 +66,27 @@ if [[ $# -eq 0 ]] ; then
     echo ${FILES_LOCALLY_MODIFIED} >> $FILES_TO_RUN
 else
     # If some files are provided, then we use these
-    echo $@ >> $FILES_TO_RUN
-    # echo "RUNNING LINT ON: "
-    # cat "$FILES_TO_RUN"
-    # echo "---"
+    echo $FILES_TO_RUN_FROM_COMMAND_LINE >> $FILES_TO_RUN
+    echo "RUNNING LINT ON: "
+    cat "$FILES_TO_RUN"
+    echo "---"
 fi
 
-# Running StaticLint
-echo "FULLNAME SCRIPT" $0
+# If no rule was set, when we have the empty rule
+# Else, we set it for Julia
+if [[ ! -z "$RULE" ]] ; then
+  RULE="[\"$RULE\"]"
+fi
+
+# Initializing some variables
 STATICLINTPATH=$(dirname $0)/..
-echo "STATICLINT PATH=" $STATICLINTPATH
-RAICODE_PATH=$PWD
-echo "CURRENT PATH=" $RAICODE_PATH
-echo "FILES_TO_RUN=" $FILES_TO_RUN
+
+# Running StaticLint
+echo "FULLNAME SCRIPT                 =" $0
+echo "FILES_TO_RUN_FROM_COMMAND_LINE  = " $FILES_TO_RUN_FROM_COMMAND_LINE
+echo "RULE                            = $RULE"
+echo "STATICLINT PATH                 =" $STATICLINTPATH
+echo "FILES_TO_RUN                    =" $FILES_TO_RUN
 
 echo "About to run StaticLint.jl..."
 julia --project=$STATICLINTPATH -e "
@@ -67,7 +106,8 @@ julia --project=$STATICLINTPATH -e "
 
   formatter = StaticLint.PreCommitFormat()
   # context = LintContext([\"LogStatementsMustBeSafe\"])
-  context = LintContext()
+  context = LintContext($RULE)
+  @info \"context\" context
 
   # Run lint on all files
   for f in all_files

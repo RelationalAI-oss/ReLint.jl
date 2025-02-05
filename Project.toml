@@ -1,6 +1,6 @@
-name = "StaticLint"
+name = "ReLint"
 uuid = "b3cc710f-9c33-5bdb-a03d-a94903873e97"
-version = "8.2.0"
+version = "0.9.0"
 
 [deps]
 CSTParser = "00ebfdb7-1f24-5e51-bd34-a7502290713f"

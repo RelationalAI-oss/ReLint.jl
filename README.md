@@ -1,6 +1,6 @@
 # ReLint.jl
 
-StaticLint is a static code analyzer for Julia. It searches for patterns in Julia source
+ReLint is a static code analyzer for Julia. It searches for patterns in Julia source
 code, such patterns aiming to indicate issues and deserve to be reported to the end-user.
 ReLint.jl is inspired from [StaticLint.jl](https://github.com/julia-vscode/StaticLint.jl)
 while being versatile. In particular, highlights of ReLint include:
@@ -23,44 +23,44 @@ You just need to clone this repository _outside_ the Julia project you would lik
 
 ## Basic usage
 
-There are several ways to use StaticLint.jl. Here are a few usage examples:
+There are several ways to use ReLint.jl. Here are a few usage examples:
 
 ```Julia
-StaticLint.run_lint_on_text("function f() @async 1 + 2 end ");
+ReLint.run_lint_on_text("function f() @async 1 + 2 end ");
 ---------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 Line 1, column 14: Use `@spawn` instead of `@async`. /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 1 potential threat is found: 1 violation and 0 recommendation
 ----------
 ```
 
-Replacing `@async` by `@spawn` make StaticLint happy:
+Replacing `@async` by `@spawn` make ReLint happy:
 
 ```Julia
-julia> StaticLint.run_lint_on_text("function f() @spawn 1 + 2 end ");
+julia> ReLint.run_lint_on_text("function f() @spawn 1 + 2 end ");
 ---------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_gbkLM58LEL.jl
 No potential threats were found.
 ----------
 ```
 
-StaticLint can be run on a file:
+ReLint can be run on a file:
 
 ```Julia
-StaticLint.run_lint("/Users/alexandrebergel/Documents/RAI/raicode13/src/RAICode.jl")
+ReLint.run_lint("/Users/alexandrebergel/Documents/RAI/raicode13/src/RAICode.jl")
 ```
 
 Note that files directly and indirectly included by `RAICode.jl` are also analyzed.
 
-When a directory is provided to `run_lint`, then StaticLint will look for Julia files. E.g.,
+When a directory is provided to `run_lint`, then ReLint will look for Julia files. E.g.,
 
 ```Julia
-StaticLint.run_lint("/Users/alexandrebergel/Documents/RAI/raicode13/src/")
+ReLint.run_lint("/Users/alexandrebergel/Documents/RAI/raicode13/src/")
 ```
 
 The expression above outputs 1928 potential threats.
 
-## Contributing to StaticLint.jl
+## Contributing to ReLint.jl
 
-You may want to contribute to StaticLint.jl for many reasons. Here are a few of them:
+You may want to contribute to ReLint.jl for many reasons. Here are a few of them:
 
 - _A rule needs to be better documented_. It is easy to do so: create a PR to this repository that improves one of the rules defined [HERE](https://github.com/RelationalAI/StaticLint.jl/blob/main/src/linting/extended_checks.jl). This `extended_checks.jl` file contains all the RAI-specific rules.
 - _A new rule has to be defined_. As our system grows and evolves, new rules may have to be defined. The beginning of the file [extended_checks.jl](https://github.com/RelationalAI/StaticLint.jl/blob/main/src/linting/extended_checks.jl) and the section below detail this process. You can always ask `@Alexandre Bergel` on Slack for assistance. Create a new PR with the rule.
@@ -69,7 +69,7 @@ You may want to contribute to StaticLint.jl for many reasons. Here are a few of 
 
 Several RAI-specific and generic rules are verified on Julia source code.
 A number of Julia keywords are known to be [either incompatible or dangerous when committed into raicode](https://relationalai.atlassian.net/browse/RAI-5839). \
-The Lint rules available to be run on Julia source code may be found in this [FILE](https://github.com/RelationalAI/StaticLint.jl/blob/main/src/linting/extended_checks.jl).
+The Lint rules available to be run on Julia source code may be found in this [FILE](https://github.com/RelationalAI-oss/ReLint.jl/blob/main/src/linting/extended_checks.jl).
 
 Adding a new rule is easy. Only the file `src/linting/extended_checks.jl` has to be modified. You need to follow the steps:
 1. Create a subtype of `LintRule`, e.g., `struct AsyncRule <: LintRule end`. Lint rules are dynamically looked up by looking at subtypes of `LintRule`.

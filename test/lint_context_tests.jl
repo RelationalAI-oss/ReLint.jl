@@ -1,5 +1,5 @@
 @testset "Lint context" begin
-    using StaticLint: LintContext, UseOfStaticThreads, LogStatementsMustBeSafe, UnsafeRule
+    using ReLint: LintContext, UseOfStaticThreads, LogStatementsMustBeSafe, UnsafeRule
 
     @testset "Basic" begin
         @test isempty(LintContext(DataType[]).rules_to_run)
@@ -48,10 +48,10 @@
                 write(io, "function f()\n  @async 1 + 1\nend\n")
                 flush(io)
 
-                @test has_values(StaticLint.run_lint(dir; io), 1, 1, 0)
+                @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
 
                 context=LintContext([])
-                @test has_values(StaticLint.run_lint(dir; io, context), 1, 0, 0)
+                @test has_values(ReLint.run_lint(dir; io, context), 1, 0, 0)
 
             end
         end

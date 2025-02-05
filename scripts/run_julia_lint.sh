@@ -13,10 +13,10 @@
 
 # ./scripts/run_lint_locally.sh /Users/alexandrebergel/Documents/RAI/raicode21/src/*.jl
 # FULLNAME SCRIPT ./scripts/run_lint_locally.sh
-# STATICLINT PATH= ./scripts/..
+# RELINT PATH= ./scripts/..
 # CURRENT PATH= /Users/alexandrebergel/Documents/RAI/ReLint.jl
 # FILES_TO_RUN= /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/tmp.SloaMkSs16
-# About to run StaticLint.jl...
+# About to run ReLint.jl...
 # [ Info: Running lint on 2 files
 # Line 47, column 9: Unsafe logging statement. You must enclose variables and strings with `@safe(...)`. /Users/alexandrebergel/Documents/RAI/raicode21/src/version.jl
 # 6 potential threats are found: 1 fatal violation, 5 violations and 0 recommendation
@@ -79,22 +79,22 @@ if [[ ! -z "$RULE" ]] ; then
 fi
 
 # Initializing some variables
-STATICLINTPATH=$(dirname $0)/..
+RELINTPATH=$(dirname $0)/..
 
 # Running StaticLint
 echo "FULLNAME SCRIPT                 =" $0
 echo "FILES_TO_RUN_FROM_COMMAND_LINE  = " $FILES_TO_RUN_FROM_COMMAND_LINE
 echo "RULE                            = $RULE"
-echo "STATICLINT PATH                 =" $STATICLINTPATH
+echo "RELINTPATH PATH                 =" $RELINTPATH
 echo "FILES_TO_RUN                    =" $FILES_TO_RUN
 
-echo "About to run StaticLint.jl..."
-julia --project=$STATICLINTPATH -e "
+echo "About to run ReLint.jl..."
+julia --project=$RELINTPATH -e "
   import Pkg
   Pkg.instantiate()
 
-  using StaticLint: StaticLint, LintContext
-  result = StaticLint.LintResult()
+  using ReLint: ReLint, LintContext
+  result = ReLint.LintResult()
   all_files_tmp=split(open(io->read(io, String), \"$FILES_TO_RUN\", \"r\"))
   # convert substring into string
   all_files=map(string, all_files_tmp)
@@ -104,19 +104,19 @@ julia --project=$STATICLINTPATH -e "
 
   @info \"Running lint on \$(length(all_files)) files\"
 
-  formatter = StaticLint.PreCommitFormat()
+  formatter = ReLint.PreCommitFormat()
   # context = LintContext([\"LogStatementsMustBeSafe\"])
   context = LintContext($RULE)
   @info \"context\" context
 
   # Run lint on all files
   for f in all_files
-    StaticLint.run_lint(f; result, formatter, context)
+    ReLint.run_lint(f; result, formatter, context)
   end
 
   # Return an error if there is an unsafe log
   if result.fatalviolations_count > 0
-    StaticLint.print_summary(formatter, stdout, result)
+    ReLint.print_summary(formatter, stdout, result)
     @error \"Fatal error discovered\"
     exit(1)
   end

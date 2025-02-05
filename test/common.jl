@@ -1,14 +1,14 @@
-using StaticLint: StaticLint, run_lint_on_text, comp, convert_offset_to_line,
+using ReLint: ReLint, run_lint_on_text, comp, convert_offset_to_line,
     convert_offset_to_line_from_lines, MarkdownFormat, PlainFormat,
     fetch_value, has_values
 
-using StaticLint: LintResult, LintContext
+using ReLint: LintResult, LintContext
 import CSTParser
 using Test
 using JSON3
 
 # Reset the caches before running the tests.
-StaticLint.reset_static_lint_caches()
+ReLint.reset_static_lint_caches()
 
 function lint_test(source::String, expected_substring::String; verbose=true, directory::String = "", context::LintContext=LintContext())
     io = IOBuffer()

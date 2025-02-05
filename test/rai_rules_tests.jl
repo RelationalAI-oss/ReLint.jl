@@ -823,10 +823,10 @@ end
             write(io, "function f()\n  @async 1 + 1\nend\n")
             flush(io)
 
-            @test has_values(StaticLint.run_lint(dir; io), 1, 1, 0)
-            @test has_values(StaticLint.run_lint(dir; io), 1, 1, 0)
-            @test has_values(StaticLint.run_lint(dir; io), 1, 1, 0)
-            @test has_values(StaticLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
         end
     end
 end
@@ -844,7 +844,7 @@ end
                     flush(io2)
 
                     str = IOBuffer()
-                    StaticLint.run_lint(dir; io=str, formatter=StaticLint.MarkdownFormat())
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
                     result = String(take!(str))
                     result_is_empty = isempty(result)
                 end
@@ -865,7 +865,7 @@ end
                     flush(io2)
 
                     str = IOBuffer()
-                    StaticLint.run_lint(dir; io=str, formatter=StaticLint.MarkdownFormat())
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
 
                     result = String(take!(str))
 
@@ -896,7 +896,7 @@ end
                     output_file = tempname()
                     json_output = IOBuffer()
                     stream_workflowcommand = IOBuffer()
-                    StaticLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand)
+                    ReLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand)
 
                     # Checking the Workflow command
                     stream_workflowcommand_report = String(take!(stream_workflowcommand))
@@ -907,7 +907,7 @@ end
 
                     # Checking the JSON
                     json_report = JSON3.read(String(take!(json_output)))
-                    @test json_report[:source] == "StaticLint"
+                    @test json_report[:source] == "ReLint"
                     @test json_report[:data][:files_count] == 2
 
                     @test json_report[:data][:violation_count] == 1
@@ -921,7 +921,7 @@ end
                     # First violations across files, then recommendations across files
                     expected = r"""
                         ## Static code analyzer report
-                        \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
 
@@ -959,10 +959,10 @@ end
 
                     output_file = tempname()
                     json_output = IOBuffer()
-                    StaticLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand=devnull)
+                    ReLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand=devnull)
 
                     json_report = JSON3.read(String(take!(json_output)))
-                    @test json_report[:source] == "StaticLint"
+                    @test json_report[:source] == "ReLint"
                     @test json_report[:data][:files_count] == 2
 
                     @test json_report[:data][:recommandation_count] == 2
@@ -976,7 +976,7 @@ end
                     # First violations across files, then recommendations across files
                     expected = r"""
                         ## Static code analyzer report
-                        \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
@@ -1017,13 +1017,13 @@ end
                     json_filename = tempname()
                     @test !isfile(json_filename)
                     # json_io = IOBuffer()
-                    StaticLint.generate_report([file1, file2], output_file; json_filename, stream_workflowcommand=devnull)
+                    ReLint.generate_report([file1, file2], output_file; json_filename, stream_workflowcommand=devnull)
 
                     @test isfile(json_filename)
                     json_content = open(io->read(io, String), json_filename)
                     json_report = JSON3.read(json_content)
 
-                    @test json_report[:source] == "StaticLint"
+                    @test json_report[:source] == "ReLint"
                     @test json_report[:data][:files_count] == 2
 
                     @test json_report[:data][:recommandation_count] == 2
@@ -1037,7 +1037,7 @@ end
                     # First violations across files, then recommendations across files
                     expected = r"""
                         ## Static code analyzer report
-                        \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
@@ -1064,10 +1064,10 @@ end
     @testset "No modified julia file" begin
         output_file = tempname()
         json_output = IOBuffer()
-        StaticLint.generate_report(String[], output_file; json_output, stream_workflowcommand=devnull)
+        ReLint.generate_report(String[], output_file; json_output, stream_workflowcommand=devnull)
 
         json_report = JSON3.read(String(take!(json_output)))
-        @test json_report[:source] == "StaticLint"
+        @test json_report[:source] == "ReLint"
         @test json_report[:data][:files_count] == 0
 
         @test json_report[:data][:recommandation_count] == 0
@@ -1076,7 +1076,7 @@ end
 
         expected = r"""
             ## Static code analyzer report
-            \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+            \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
             Report creation time \(UTC\): \H+
             No Julia file is modified or added in this PR.
             """
@@ -1096,10 +1096,10 @@ end
 
                 output_file = tempname()
                 json_output = IOBuffer()
-                StaticLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
+                ReLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
 
                 json_report = JSON3.read(String(take!(json_output)))
-                @test json_report[:source] == "StaticLint"
+                @test json_report[:source] == "ReLint"
                 @test json_report[:data][:files_count] == 0
                 @test json_report[:data][:recommandation_count] == 0
                 @test json_report[:data][:violation_count] == 0
@@ -1112,7 +1112,7 @@ end
 
                 expected = r"""
                     ## Static code analyzer report
-                    \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+                    \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                     Report creation time \(UTC\): \H+
                     No Julia file is modified or added in this PR.
                     """
@@ -1137,10 +1137,10 @@ end
 
                     output_file = tempname()
                     json_output = IOBuffer()
-                    StaticLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand=devnull)
+                    ReLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand=devnull)
 
                     json_report = JSON3.read(String(take!(json_output)))
-                    @test json_report[:source] == "StaticLint"
+                    @test json_report[:source] == "ReLint"
                     @test json_report[:data][:files_count] == 2
                     @test json_report[:data][:recommandation_count] == 0
                     @test json_report[:data][:violation_count] == 0
@@ -1152,7 +1152,7 @@ end
 
                     expected = r"""
                         ## Static code analyzer report
-                        \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                         🎉No potential threats are found over 2 Julia files.👍
                         """
@@ -1173,10 +1173,10 @@ end
 
                 output_file = tempname()
                 json_output = IOBuffer()
-                StaticLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
+                ReLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
 
                 json_report = JSON3.read(String(take!(json_output)))
-                @test json_report[:source] == "StaticLint"
+                @test json_report[:source] == "ReLint"
                 @test json_report[:data][:files_count] == 1
 
                 @test json_report[:data][:recommandation_count] == 0
@@ -1189,7 +1189,7 @@ end
 
                 expected = r"""
                     ## Static code analyzer report
-                    \*\*Output of the \[StaticLint\.jl code analyzer\]\(https://github\.com/RelationalAI/StaticLint\.jl\).+\*\*
+                    \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                     Report creation time \(UTC\): \H+
                     🎉No potential threats are found over 1 Julia file.👍
                     """
@@ -1208,7 +1208,7 @@ end
 
                 output_file = tempname()
                 json_io = IOBuffer()
-                StaticLint.generate_report(
+                ReLint.generate_report(
                     [file1],
                     output_file;
                     json_output=json_io,
@@ -1218,7 +1218,7 @@ end
                     stream_workflowcommand=devnull)
 
                 json_report = JSON3.read(String(take!(json_io)))
-                @test json_report[:source] == "StaticLint"
+                @test json_report[:source] == "ReLint"
                 @test json_report[:data][:files_count] == 1
 
                 @test json_report[:data][:violation_count] == 1
@@ -1231,7 +1231,7 @@ end
 
                 # Remove the first folder to address an issue of GitHub Action
                 # (See MarkdownFormat for more information)
-                corrected_file_name = StaticLint.remove_prefix_from_filename(file1, "var/")
+                corrected_file_name = ReLint.remove_prefix_from_filename(file1, "var/")
 
                 expected = " - **[Line 2, column 3:]" *
                     "(https://github.com/RelationalAI/raicode/blob/axb-foo-bar/$(corrected_file_name)" *
@@ -1255,7 +1255,7 @@ end
 
                 output_file = tempname()
                 json_io = IOBuffer()
-                StaticLint.generate_report(
+                ReLint.generate_report(
                     [file1], # Ignored because of analyze_all_file_found_locally
                     output_file;
                     json_output=json_io,
@@ -1268,7 +1268,7 @@ end
 
                 json_report = JSON3.read(String(take!(json_io)))
 
-                @test json_report[:source] == "StaticLint"
+                @test json_report[:source] == "ReLint"
                 @test json_report[:data][:files_count] >= 2
                 @test json_report[:data][:violation_count] >= 0
                 @test json_report[:data][:recommandation_count] >= 0
@@ -1300,10 +1300,10 @@ end
 
                 output_file = tempname()
                 json_output = IOBuffer()
-                StaticLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
+                ReLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
 
                 json_report = JSON3.read(String(take!(json_output)))
-                @test json_report[:source] == "StaticLint"
+                @test json_report[:source] == "ReLint"
                 @test json_report[:data][:files_count] == 1
                 @test json_report[:data][:recommandation_count] == 0
                 @test json_report[:data][:violation_count] == 100
@@ -1334,7 +1334,7 @@ end
             end
 
             str = IOBuffer()
-            result = StaticLint.run_lint(dir; io=str, formatter=StaticLint.MarkdownFormat())
+            result = ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
             @test result.files_count == 2
             @test result.violations_count == 1
             @test result.recommendations_count == 0
@@ -1347,14 +1347,14 @@ end
         local r
         r = LintResult()
 
-        formatters = [StaticLint.PlainFormat(), StaticLint.MarkdownFormat()]
+        formatters = [ReLint.PlainFormat(), ReLint.MarkdownFormat()]
         for formatter in formatters
             mktempdir() do dir
                 open(joinpath(dir, "foo.jl"), "w") do io
                     write(io, "function f()\n  @async 1 + 1\nend\n")
                     flush(io)
                     str = IOBuffer()
-                    append!(r, StaticLint.run_lint(dir; io=str, formatter))
+                    append!(r, ReLint.run_lint(dir; io=str, formatter))
                 end
             end
         end
@@ -1363,7 +1363,7 @@ end
 
     @testset "Empty directory" begin
         mktempdir() do dir
-            @test StaticLint.run_lint(dir) == LintResult()
+            @test ReLint.run_lint(dir) == LintResult()
         end
     end
 end
@@ -1621,7 +1621,7 @@ end
     end
 end
 
-@testset "Resetting StaticLint caches" begin
+@testset "Resetting ReLint caches" begin
     source = """
     function f()
         @async 1 + 1
@@ -1635,9 +1635,9 @@ end
 
     run_lint_on_text(source; io=IOBuffer())
 
-    @test !isempty(StaticLint.check_cache)
-    StaticLint.reset_static_lint_caches()
-    @test isempty(StaticLint.check_cache)
+    @test !isempty(ReLint.check_cache)
+    ReLint.reset_static_lint_caches()
+    @test isempty(ReLint.check_cache)
 end
 
 @testset "Recommentation separated from violations" begin
@@ -1934,8 +1934,8 @@ end
                     flush(io2)
 
                     str = IOBuffer()
-                    result = StaticLint.run_lint(dir; io=str, formatter=StaticLint.PreCommitFormat())
-                    StaticLint.print_summary(StaticLint.PreCommitFormat(), str, result)
+                    result = ReLint.run_lint(dir; io=str, formatter=ReLint.PreCommitFormat())
+                    ReLint.print_summary(ReLint.PreCommitFormat(), str, result)
 
                     result = String(take!(str))
 
@@ -1961,8 +1961,8 @@ end
                     flush(io2)
 
                     str = IOBuffer()
-                    result = StaticLint.run_lint(dir; io=str, formatter=StaticLint.PreCommitFormat())
-                    StaticLint.print_summary(StaticLint.PreCommitFormat(), str, result)
+                    result = ReLint.run_lint(dir; io=str, formatter=ReLint.PreCommitFormat())
+                    ReLint.print_summary(ReLint.PreCommitFormat(), str, result)
 
                     result = String(take!(str))
 

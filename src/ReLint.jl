@@ -1,4 +1,4 @@
-module StaticLint
+module ReLint
 
 using CSTParser: CSTParser, EXPR
 import InteractiveUtils

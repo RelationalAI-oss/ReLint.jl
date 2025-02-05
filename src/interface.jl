@@ -356,8 +356,8 @@ Run lint rules on a file `rootpath`, which must be an existing non-folder file. 
 LintResult.
 
 Example of use:
-    import StaticLint
-    StaticLint.run_lint("foo/bar/myfile.jl")
+    import ReLint
+    ReLint.run_lint("foo/bar/myfile.jl")
 """
 function run_lint(
     rootpath::String;
@@ -379,7 +379,7 @@ function run_lint(
     endswith(rootpath, ".jl") || return result
 
     # We are running Lint on a Julia file
-    _,_,lint_reports = StaticLint.lint_file(rootpath, context)
+    _,_,lint_reports = ReLint.lint_file(rootpath, context)
     print_header(formatter, io, rootpath)
 
     is_recommendation(r::LintRuleReport) = r.rule isa RecommendationLintRule
@@ -473,7 +473,7 @@ function print_datadog_report(
     fatalviolations_count::Integer,
 )
     event = Dict(
-        :source => "StaticLint",
+        :source => "ReLint",
         :specversion => "1.0",
         :type => "result",
         :time => string(now(UTC)), #Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SSZ"), # RFC3339 format
@@ -491,7 +491,7 @@ end
 """
     generate_report(filenames::Vector{String}, output_filename::String;...)
 
-Main entry point of StaticLint.jl. The function `generate_report` takes as argument a list
+Main entry point of ReLint.jl. The function `generate_report` takes as argument a list
 of files on which lint has to process. A report is generated containing the result of the
 Lint analysis.
 
@@ -562,9 +562,9 @@ function generate_report(
 
     open(output_filename, "w") do output_io
         println(output_io, "## Static code analyzer report")
-        println(output_io, "**Output of the [StaticLint.jl code analyzer]\
-            (https://github.com/RelationalAI/StaticLint.jl). \
-            🫵[Want to contribute?](https://github.com/RelationalAI/StaticLint.jl/blob/main/README.md#contributing-to-staticlintjl)🫵 \
+        println(output_io, "**Output of the [ReLint.jl code analyzer]\
+            (https://github.com/RelationalAI-oss/ReLint.jl). \
+            🫵[Want to contribute?](https://github.com/RelationalAI-oss/ReLint.jl/blob/main/README.md#contributing-to-staticlintjl)🫵 \
             [RelationalAI Style Guide for Julia](https://github.com/RelationalAI/RAIStyle)**\n\
             Report creation time (UTC): ($(now(UTC)))")
 
@@ -585,7 +585,7 @@ function generate_report(
 
         # RUN LINT!!!
         for filename in julia_filenames
-            StaticLint.run_lint(
+            ReLint.run_lint(
                 filename;
                 result = lint_result,
                 io = output_io,

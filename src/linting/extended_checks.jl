@@ -322,6 +322,8 @@ struct InterpolationInSafeLogRule <: RecommendationLintRule end
 struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
 
+struct ShowErrorReporting <: RecommendationLintRule end
+
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
         InteractiveUtils.subtypes(RecommendationLintRule),
@@ -606,9 +608,13 @@ function check(t::NonFrontShapeAPIUsageRule, x::EXPR, markers::Dict{Symbol,Strin
     contains(markers[:filename], "src/FrontCompiler") && return
     contains(markers[:filename], "src/FFI") && return
     contains(markers[:filename], "src/FrontIR") && return
-    # Also, allow usages in tests
+    # Allow usage in shapes package
+    contains(markers[:filename], "packages/Shapes") && return
+    # Allow usage in Front benchmarks
+    contains(markers[:filename], "bench/Front") && return
+    # Allow usages in tests
     contains(markers[:filename], "test/") && return
-    # Also, allow usages of the name `Shape` in `packages/` although they refer to a different thing.
+    # Allow usages of the name `Shape` in `packages/` although they refer to a different thing.
     contains(markers[:filename], "packages/RAI_Protos/src/proto/metadata.proto") && return
     contains(markers[:filename], "packages/RAI_Protos/src/gen/relationalai/protocol/metadata_pb.jl") && return
 
@@ -619,6 +625,7 @@ function check(t::NonFrontShapeAPIUsageRule, x::EXPR, markers::Dict{Symbol,Strin
     generic_check(t, x, "ffi_shape_term(hole_variable_star)", "Usage of `ffi_shape_term` is not allowed outside of the Front-end Compiler and FFI.")
     generic_check(t, x, "Shape", "Usage of `Shape` is not allowed outside of the Front-end Compiler and FFI.")
 end
+
 
 function check(t::InterpolationInSafeLogRule, x::EXPR)
     generic_check(t, x, "@warnv_safe_to_log hole_variable \"LINT_STRING_WITH_INTERPOLATION\"", "Safe warning log has interpolation.")
@@ -690,3 +697,8 @@ function check(t::LogStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,String}
     end
 end
 
+function check(t::ShowErrorReporting, x::EXPR)
+    msg = "Reporting with `showerror(...)` instead of `safe_showerror(...)` could leak sensitive data."
+    # generic_check(t, x, "showerror(hole_variable_star)", msg)
+    generic_check(t, x, "showerror", msg)
+end

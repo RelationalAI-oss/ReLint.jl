@@ -464,6 +464,26 @@ function run_lint_on_text(
     end
 end
 
+function produce_list_of_rules()
+    # @eval function ReLint.generic_check(T::DataType, x::EXPR, template_code::String, error_msg::String)
+    #     push!(all_rules, "$(template_code)\t$(error_msg)")
+    # end
+
+    expr = CSTParser.parse("1 + 1")
+    d = Dict{Symbol,String}()
+    for T in all_extended_rule_types[]
+        @info T
+        isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+        check(T(), expr, d)
+    end
+
+    for t in all_rules
+        println(t)
+    end
+    @info "Need to open a new Julia REPL"
+    # exit(0)
+end
+
 function print_datadog_report(
     json_output::IO,
     report_as_string::String,

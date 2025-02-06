@@ -14,7 +14,6 @@
 # is probably the place to start, not this file.
 #################################################################################
 
-
 struct LintContext
     rules_to_run::Vector{DataType}
 
@@ -32,6 +31,8 @@ struct LintContext
     LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s))
     LintContext() = new(all_extended_rule_types[])
 end
+
+all_rules = []
 
 #################################################################################
 # UTILITY FUNCTIONS
@@ -355,6 +356,7 @@ function generic_check(t::LintRule, x::EXPR, template_code::String, error_msg::S
 end
 
 function generic_check(T::DataType, x::EXPR, template_code::String, error_msg::String)
+    # push!(all_rules, "$(template_code)\t$(error_msg)")
     does_match(x, template_code) && seterror!(x, LintRuleReport(T(), error_msg))
 end
 

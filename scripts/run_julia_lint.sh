@@ -67,9 +67,9 @@ if [[ -z "$FILES_TO_RUN_FROM_COMMAND_LINE" ]] ; then
 else
     # If some files are provided, then we use these
     echo $FILES_TO_RUN_FROM_COMMAND_LINE >> $FILES_TO_RUN
-    echo "RUNNING LINT ON: "
-    cat "$FILES_TO_RUN"
-    echo "---"
+    # echo "RUNNING LINT ON: "
+    # cat "$FILES_TO_RUN"
+    # echo "---"
 fi
 
 # If no rule was set, when we have the empty rule
@@ -83,7 +83,7 @@ RELINTPATH=$(dirname $0)/..
 
 # Running StaticLint
 echo "FULLNAME SCRIPT                 =" $0
-echo "FILES_TO_RUN_FROM_COMMAND_LINE  = " $FILES_TO_RUN_FROM_COMMAND_LINE
+# echo "FILES_TO_RUN_FROM_COMMAND_LINE  = " $FILES_TO_RUN_FROM_COMMAND_LINE
 echo "RULE                            = $RULE"
 echo "RELINTPATH PATH                 =" $RELINTPATH
 echo "FILES_TO_RUN                    =" $FILES_TO_RUN

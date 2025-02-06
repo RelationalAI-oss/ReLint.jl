@@ -36,6 +36,7 @@
 RULE=""
 FILES_TO_RUN_FROM_COMMAND_LINE=""
 while [[ $# -gt 0 ]]; do
+  # echo "DEBUG: " $1
   case $1 in
     -r|--rule)
       RULE="$2"
@@ -53,6 +54,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 
 # temporary file containing all the files on which lint has to run.
 FILES_TO_RUN=$(mktemp)

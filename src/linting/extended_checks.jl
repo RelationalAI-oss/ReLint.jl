@@ -321,6 +321,7 @@ struct NonFrontShapeAPIUsageRule <: ViolationLintRule end
 struct InterpolationInSafeLogRule <: RecommendationLintRule end
 struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
+struct AssertionStatementsMustBeSafe <: FatalLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -630,7 +631,7 @@ function check(t::UseOfStaticThreads, x::EXPR)
     generic_check(t, x, "Threads.@threads :static hole_variable_star", msg)
 end
 
-function all_arguments_are_safe(x::EXPR)
+function all_arguments_are_safe(x::EXPR; skip_first_arg::Bool=false)
     is_safe_macro_call(y) =
         y.head == :macrocall && y.args[1].head == :IDENTIFIER && y.args[1].val == "@safe"
 
@@ -645,7 +646,8 @@ function all_arguments_are_safe(x::EXPR)
                                     :OCTINT
                                     ]
 
-    for arg in x.args[2:end]
+    first_index = skip_first_arg ? 4 : 2
+    for arg in x.args[first_index:end]
         # This is safe
         if is_safe_macro_call(arg) || is_safe_literal(arg)
             continue
@@ -685,8 +687,23 @@ function check(t::LogStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,String}
 
     # @warn and its friends
     if x.head == :macrocall && x.args[1].head == :IDENTIFIER && startswith(x.args[1].val, "@warn")
-        # isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
         all_arguments_are_safe(x) || seterror!(x, LintRuleReport(t, error_msg))
+    end
+end
+
+function check(t::AssertionStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,String})
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+    end
+
+    error_msg = "Unsafe assertion statement. You must enclose the message `@safe(...)`."
+
+    # @assert and its friends
+    if x.head == :macrocall &&
+        x.args[1].head == :IDENTIFIER &&
+        (startswith(x.args[1].val, "@assert") || startswith(x.args[1].val, "@dassert"))
+
+        all_arguments_are_safe(x; skip_first_arg=true) || seterror!(x, LintRuleReport(t, error_msg))
     end
 end
 

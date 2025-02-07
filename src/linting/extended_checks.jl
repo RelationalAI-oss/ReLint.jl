@@ -22,7 +22,7 @@ struct LintContext
         dt = DataType[]
         for dt_as_str in dts_as_str
             ind = findfirst(t -> nameof(t) == Symbol(dt_as_str), all_extended_rule_types[])
-            isnothing(ind) && error("Specified non-existing rule")
+            isnothing(ind) && error("Non-existing rule: $(dt_as_str)")
             push!(dt, all_extended_rule_types[][ind])
         end
         return new(dt)

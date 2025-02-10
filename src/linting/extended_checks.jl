@@ -275,10 +275,6 @@ abstract type RecommendationLintRule <: LintRule end
 abstract type ViolationLintRule <: LintRule end
 abstract type FatalLintRule <: LintRule end
 
-# Useful to bridge old staticlint with ours.
-struct UnaccountedRule <: ViolationLintRule end
-check(::UnaccountedRule, msg) = nothing
-
 struct AsyncRule <: ViolationLintRule end
 struct CcallRule <: RecommendationLintRule end
 struct Pointer_from_objrefRule <: RecommendationLintRule end

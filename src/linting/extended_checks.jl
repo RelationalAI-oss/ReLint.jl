@@ -285,26 +285,18 @@ struct Pointer_from_objrefRule <: RecommendationLintRule end
 struct InitializingWithFunctionRule <: ViolationLintRule end
 struct FinalizerRule <: RecommendationLintRule end
 struct CFunctionRule <: RecommendationLintRule end
-struct SemaphoreRule <: RecommendationLintRule end
 struct DestructorRule <: RecommendationLintRule end
-struct ReentrantLockRule <: RecommendationLintRule end
-struct SpinLockRule <: RecommendationLintRule end
-struct LockRule <: RecommendationLintRule end
 struct UnlockRule <: RecommendationLintRule end
 struct YieldRule <: RecommendationLintRule end
 struct SleepRule <: RecommendationLintRule end
 struct MmapRule <: RecommendationLintRule end
-struct FutureRule <: RecommendationLintRule end
-struct WaitRule <: RecommendationLintRule end
 struct InboundsRule <: RecommendationLintRule end
-struct AtomicRule <: RecommendationLintRule end
 struct PtrRule <: RecommendationLintRule end
 struct ArrayWithNoTypeRule <: ViolationLintRule end
 struct ThreadsRule <: RecommendationLintRule end
 struct GeneratedRule <: RecommendationLintRule end
 struct SyncRule <: RecommendationLintRule end
 struct RemovePageRule <: ViolationLintRule end
-struct ChannelRule <: RecommendationLintRule end
 struct TaskRule <: ViolationLintRule end
 struct ErrorExceptionRule <: ViolationLintRule end
 struct ErrorRule <: ViolationLintRule end
@@ -400,26 +392,11 @@ function check(t::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,St
 end
 
 check(t::CFunctionRule, x::EXPR) = generic_check(t, x, "@cfunction(hole_variable, hole_variable_star)", "Macro `@cfunction` should not be used.")
-check(t::SemaphoreRule, x::EXPR) = generic_check(t, x, "Semaphore(hole_variable)", "`Semaphore` should be used with extreme caution.")
-check(t::ReentrantLockRule, x::EXPR) = generic_check(t, x, "ReentrantLock()", "`ReentrantLock` should be used with extreme caution.")
 
 function check(t::DestructorRule, x::EXPR)
     error_msg = "Destructors should be used with extreme caution."
     generic_check(t, x, "destructor(hole_variable, hole_variable)", error_msg)
     generic_check(t, x, "destructor(hole_variable) do hole_variable hole_variable_star end", error_msg)
-end
-
-function check(t::SpinLockRule, x::EXPR)
-    msg = "`SpinLock` should be used with extreme caution."
-    generic_check(t, x, "SpinLock()", msg)
-    generic_check(t, x, "Threads.SpinLock()", msg)
-    generic_check(t, x, "Base.Threads.SpinLock()", msg)
-end
-
-function check(t::LockRule, x::EXPR)
-    msg = "`@lock` should be used with extreme caution."
-    generic_check(t, x, "@lock hole_variable hole_variable", msg)
-    generic_check(t, x, "Base.@lock hole_variable hole_variable", msg)
 end
 
 check(t::UnlockRule, x::EXPR) = generic_check(t, x, "unlock(hole_variable)")
@@ -432,20 +409,6 @@ end
 
 check(t::InboundsRule, x::EXPR) = generic_check(t, x, "@inbounds hole_variable")
 
-function check(t::AtomicRule, x::EXPR)
-    msg = "`Atomic` should be used with extreme caution."
-    generic_check(t, x, "Atomic(hole_variable_star)", msg)
-    generic_check(t, x, "Atomic{hole_variable}(hole_variable_star)", msg)
-    generic_check(t, x, "Threads.Atomic(hole_variable_star)", msg)
-    generic_check(t, x, "Threads.Atomic{hole_variable}(hole_variable_star)", msg)
-end
-
-function check(t::FutureRule, x::EXPR)
-    generic_check(t, x, "Future{hole_variable}(hole_variable_star)")
-    generic_check(t, x, "Future(hole_variable_star)")
-end
-
-check(t::WaitRule, x::EXPR) = generic_check(t, x, "wait(hole_variable)")
 check(t::PtrRule, x::EXPR) = generic_check(t, x, "Ptr{hole_variable}(hole_variable)")
 
 function check(t::ArrayWithNoTypeRule, x::EXPR, markers::Dict{Symbol,String})
@@ -473,7 +436,6 @@ function check(t::SyncRule, x::EXPR)
 end
 
 check(t::RemovePageRule, x::EXPR) = generic_check(t, x, "remove_page(hole_variable,hole_variable)")
-check(t::ChannelRule, x::EXPR) = generic_check(t, x, "Channel(hole_variable_star)")
 check(t::TaskRule, x::EXPR) = generic_check(t, x, "Task(hole_variable)")
 
 function check(t::ErrorExceptionRule, x::EXPR)

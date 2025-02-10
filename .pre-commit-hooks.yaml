@@ -1,6 +1,6 @@
 - id: lint-checks
   name: lint-checks
-  description: Checks for ReLint violations in Julia code base
+  description: Checks for ReLint violations on Julia code base
   language: script
   entry: ./scripts/run_julia_lint.sh
   types: [file]
@@ -8,7 +8,7 @@
 - id: unsafe-log-checks
   args: [--rule, LogStatementsMustBeSafe]
   name: unsafe-log-checks
-  description: Checks for unsafe logs in Julia code base
+  description: Checks for unsafe logs on Julia code base
   language: script
   entry: ./scripts/run_julia_lint.sh
   types: [file]

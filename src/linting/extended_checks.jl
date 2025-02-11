@@ -15,7 +15,7 @@
 #################################################################################
 
 
-struct LintContext
+mutable struct LintContext
     rules_to_run::Vector{DataType}
 
     function LintContext(dts_as_str::Vector{String})
@@ -80,8 +80,8 @@ end
 
 function check_all(
     x::EXPR,
-    markers::Dict{Symbol,String} =Dict{Symbol,String}(),
-    context::LintContext=LintContext()
+    markers::Dict{Symbol,String} = Dict{Symbol,String}(),
+    context::LintContext = LintContext()
 )
     # Setting up the markers
     if headof(x) === :const
@@ -309,6 +309,16 @@ struct NonFrontShapeAPIUsageRule <: ViolationLintRule end
 struct InterpolationInSafeLogRule <: RecommendationLintRule end
 struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
+
+struct UnusedFunction <: ViolationLintRule end
+
+# const all_extended_rule_types = Ref{Vector{DataType}}(
+#     vcat(
+#         InteractiveUtils.subtypes(RecommendationLintRule),
+#         InteractiveUtils.subtypes(ViolationLintRule),
+#         InteractiveUtils.subtypes(FatalLintRule),
+#         )
+# )
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -648,3 +658,34 @@ function check(t::LogStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,String}
     end
 end
 
+
+# TO DELETE
+# abstract type AbstractPass end
+
+# abstract type AbstractFunctionPass <: AbstractPass end
+# abstract type AbstractFilePass <: AbstractPass end
+
+# # Any subtype of AbstractGlobalPass is run before checking, global
+# abstract type AbstractGlobalPass <: AbstractPass end
+
+# Per default a lint rule does not require a pass
+
+pass_of(t::LintRule) = :none # Return :none, :global, :file, :function
+require_pass(t::UnusedFunction) = pass_of(t) != :none
+pass!(t::Any, x::EXPR, markers::Dict{Symbol,String}) = nothing
+
+
+
+pass_of(t::UnusedFunction) = :global
+function pass!(t::UnusedFunction, x::EXPR, markers::Dict{Symbol,String})
+
+end
+
+
+
+function check(t::UnusedFunction, x::EXPR, markers::Dict{Symbol,String})
+
+    # We hit a function call. We need to check if this call is in the current context.
+    if x.head == :call && x.args[1].head == :IDENTIFIER
+    end
+end

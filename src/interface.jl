@@ -70,6 +70,10 @@ function has_values(l::LintResult, a, b, c)
 end
 
 
+function do_passes!(markers::Dict{Symbol,String}, x::EXPR, context::LintContext)
+
+end
+
 """
     lint_file(rootpath, context)
 
@@ -80,6 +84,8 @@ function lint_file(rootpath, context::LintContext)
     ast = CSTParser.parse(file_content_string, true)
 
     markers::Dict{Symbol,String} = Dict(:filename => rootpath)
+    # markers = produce_markers context
+    do_passes!(markers, ast, context)
     check_all(ast, markers, context)
 
     lint_rule_reports = []

@@ -18,6 +18,9 @@
 mutable struct LintContext
     rules_to_run::Vector{DataType}
 
+    global_markers::Dict{Symbol,String}
+    local_markers::Dict{Symbol,String}
+
     function LintContext(dts_as_str::Vector{String})
         dt = DataType[]
         for dt_as_str in dts_as_str
@@ -25,12 +28,14 @@ mutable struct LintContext
             isnothing(ind) && error("Specified non-existing rule")
             push!(dt, all_extended_rule_types[][ind])
         end
-        return new(dt)
+        return LintContext(dt)
     end
 
-    LintContext(s::Vector{DataType}) = new(s)
-    LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s))
-    LintContext() = new(all_extended_rule_types[])
+    function LintContext(s::Vector{DataType})
+        return new(s, Dict{Symbol,String}(), Dict{Symbol,String}())
+    end
+    LintContext(s::Vector{Any}) = LintContext(convert(Vector{DataType}, s))
+    LintContext() = LintContext(all_extended_rule_types[])
 end
 
 #################################################################################
@@ -80,45 +85,44 @@ end
 
 function check_all(
     x::EXPR,
-    markers::Dict{Symbol,String} = Dict{Symbol,String}(),
     context::LintContext = LintContext()
 )
     # Setting up the markers
     if headof(x) === :const
-        markers[:const] = fetch_value(x, :IDENTIFIER)
+        context.local_markers[:const] = fetch_value(x, :IDENTIFIER)
     end
 
     if headof(x) === :function
-        markers[:function] = fetch_value(x, :IDENTIFIER)
+        context.local_markers[:function] = fetch_value(x, :IDENTIFIER)
     end
 
     if headof(x) === :macrocall
         id = fetch_value(x, :IDENTIFIER)
         if !isnothing(id)
-            markers[:macrocall] = id
+            context.local_markers[:macrocall] = id
         end
     end
 
     for T in context.rules_to_run
-        check_with_process(T, x, markers)
+        check_with_process(T, x, context)
         if haserror(x) && x.meta.error isa LintRuleReport
             lint_rule_report = x.meta.error
-            if haskey(markers, :filename)
-                lint_rule_report.file = markers[:filename]
+            if haskey(context.local_markers, :filename)
+                lint_rule_report.file = context.local_markers[:filename]
             end
         end
     end
 
     if x.args !== nothing
         for i in 1:length(x.args)
-            check_all(x.args[i], markers, context)
+            check_all(x.args[i], context)
         end
     end
 
     # Do some cleaning
-    headof(x) === :const && delete!(markers, :const)
-    headof(x) === :function && delete!(markers, :function)
-    headof(x) === :macrocall && delete!(markers, :macrocall)
+    headof(x) === :const && delete!(context.local_markers, :const)
+    headof(x) === :function && delete!(context.local_markers, :function)
+    headof(x) === :macrocall && delete!(context.local_markers, :macrocall)
 end
 
 
@@ -365,12 +369,12 @@ function generic_check(T::DataType, x::EXPR, template_code::String)
     return generic_check(T, x, template_code, "`$(keyword)` should be used with extreme caution.")
 end
 
-function check_with_process(T::DataType, x::EXPR, markers::Dict{Symbol,String})
-    check(T(), x, markers)
+function check_with_process(T::DataType, x::EXPR, context::LintContext)
+    check(T(), x, context)
 end
 
 # Useful for rules that do not need markers
-check(t::Any, x::EXPR, markers::Dict{Symbol,String}) = check(t, x)
+check(t::Any, x::EXPR, context::LintContext) = check(t, x)
 
 # The following function defines rules that are matched on the input Julia source code
 # Each rule comes with a pattern that is checked against the abstract syntax tree
@@ -389,9 +393,9 @@ end
 check(t::CcallRule, x::EXPR) = generic_check(t, x, "ccall(hole_variable, hole_variable, hole_variable, hole_variable_star)", "`ccall` should be used with extreme caution.")
 check(t::Pointer_from_objrefRule, x::EXPR) = generic_check(t, x, "pointer_from_objref(hole_variable)", "`pointer_from_objref` should be used with extreme caution.")
 
-function check(t::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,String})
+function check(t::InitializingWithFunctionRule, x::EXPR, context::LintContext)
     # If we are not in a const statement, then we exit this function.
-    haskey(markers, :const) || return
+    haskey(context.local_markers, :const) || return
     generic_check(t, x, "Threads.nthreads()", "`Threads.nthreads()` should not be used in a constant variable.")
     generic_check(t, x, "is_local_deployment()", "`is_local_deployment()` should not be used in a constant variable.")
     generic_check(t, x, "Deployment.is_local_deployment()", "`Deployment.is_local_deployment()` should not be used in a constant variable.")
@@ -417,12 +421,12 @@ check(t::InboundsRule, x::EXPR) = generic_check(t, x, "@inbounds hole_variable")
 
 check(t::PtrRule, x::EXPR) = generic_check(t, x, "Ptr{hole_variable}(hole_variable)")
 
-function check(t::ArrayWithNoTypeRule, x::EXPR, markers::Dict{Symbol,String})
-    haskey(markers, :filename) || return
-    contains(markers[:filename], "src/Compiler") || return
+function check(t::ArrayWithNoTypeRule, x::EXPR, context::LintContext)
+    haskey(context.local_markers, :filename) || return
+    contains(context.local_markers[:filename], "src/Compiler") || return
 
-    haskey(markers, :macrocall) && markers[:macrocall] == "@match" && return
-    haskey(markers, :macrocall) && markers[:macrocall] == "@matchrule" && return
+    haskey(context.local_markers, :macrocall) && context.local_markers[:macrocall] == "@match" && return
+    haskey(context.local_markers, :macrocall) && context.local_markers[:macrocall] == "@matchrule" && return
 
     generic_check(t, x, "[]", "Need a specific Array type to be provided.")
 end
@@ -460,10 +464,10 @@ function check(t::ErrorRule, x::EXPR)
         "Use custom exception instead of the generic `error()`.")
 end
 
-function check(t::UnsafeRule, x::EXPR, markers::Dict{Symbol,String})
-    haskey(markers, :function) || return
-    isnothing(match(r"_unsafe_.*", markers[:function])) || return
-    isnothing(match(r"unsafe_.*", markers[:function])) || return
+function check(t::UnsafeRule, x::EXPR, context::LintContext)
+    haskey(context.local_markers, :function) || return
+    isnothing(match(r"_unsafe_.*", context.local_markers[:function])) || return
+    isnothing(match(r"unsafe_.*", context.local_markers[:function])) || return
 
     generic_check(
         t,
@@ -556,9 +560,9 @@ function check(t::StringInterpolationRule, x::EXPR)
     open_parent_count != dollars_count && seterror!(x, LintRuleReport(t, error_msg))
 end
 
-function check(t::RelPathAPIUsageRule, x::EXPR, markers::Dict{Symbol,String})
-    haskey(markers, :filename) || return
-    contains(markers[:filename], "src/Compiler/Front") || return
+function check(t::RelPathAPIUsageRule, x::EXPR, context::LintContext)
+    haskey(context.local_markers, :filename) || return
+    contains(context.local_markers[:filename], "src/Compiler/Front") || return
 
     generic_check(t, x, "hole_variable::RelPath", "Usage of type `RelPath` is not allowed in this context.")
     generic_check(t, x, "RelPath(hole_variable)", "Usage of type `RelPath` is not allowed in this context.")
@@ -568,17 +572,17 @@ function check(t::RelPathAPIUsageRule, x::EXPR, markers::Dict{Symbol,String})
     generic_check(t, x, "relpath_from_signature(hole_variable)", "Usage of method `relpath_from_signature` is not allowed in this context.")
 end
 
-function check(t::NonFrontShapeAPIUsageRule, x::EXPR, markers::Dict{Symbol,String})
-    haskey(markers, :filename) || return
+function check(t::NonFrontShapeAPIUsageRule, x::EXPR, context::LintContext)
+    haskey(context.local_markers, :filename) || return
     # In the front-end and in FFI, we are allowed to refer to `Shape`
-    contains(markers[:filename], "src/FrontCompiler") && return
-    contains(markers[:filename], "src/FFI") && return
-    contains(markers[:filename], "src/FrontIR") && return
+    contains(context.local_markers[:filename], "src/FrontCompiler") && return
+    contains(context.local_markers[:filename], "src/FFI") && return
+    contains(context.local_markers[:filename], "src/FrontIR") && return
     # Also, allow usages in tests
-    contains(markers[:filename], "test/") && return
+    contains(context.local_markers[:filename], "test/") && return
     # Also, allow usages of the name `Shape` in `packages/` although they refer to a different thing.
-    contains(markers[:filename], "packages/RAI_Protos/src/proto/metadata.proto") && return
-    contains(markers[:filename], "packages/RAI_Protos/src/gen/relationalai/protocol/metadata_pb.jl") && return
+    contains(context.local_markers[:filename], "packages/RAI_Protos/src/proto/metadata.proto") && return
+    contains(context.local_markers[:filename], "packages/RAI_Protos/src/gen/relationalai/protocol/metadata_pb.jl") && return
 
     generic_check(t, x, "shape_term(hole_variable_star)", "Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI.")
     generic_check(t, x, "Front.shape_term(hole_variable_star)", "Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI.")
@@ -629,9 +633,9 @@ function all_arguments_are_safe(x::EXPR)
     return true
 end
 
-function check(t::LogStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,String})
-    if haskey(markers, :filename)
-        contains(markers[:filename], "test/") && return
+function check(t::LogStatementsMustBeSafe, x::EXPR, context::LintContext)
+    if haskey(context.local_markers, :filename)
+        contains(context.local_markers[:filename], "test/") && return
     end
 
     error_msg = "Unsafe logging statement. You must enclose variables and strings with `@safe(...)`."
@@ -661,29 +665,26 @@ end
 
 # TO DELETE
 # abstract type AbstractPass end
-
 # abstract type AbstractFunctionPass <: AbstractPass end
 # abstract type AbstractFilePass <: AbstractPass end
-
 # # Any subtype of AbstractGlobalPass is run before checking, global
 # abstract type AbstractGlobalPass <: AbstractPass end
-
 # Per default a lint rule does not require a pass
 
 pass_of(t::LintRule) = :none # Return :none, :global, :file, :function
-require_pass(t::UnusedFunction) = pass_of(t) != :none
-pass!(t::Any, x::EXPR, markers::Dict{Symbol,String}) = nothing
+require_pass(t::LintRule) = pass_of(t) != :none
+pass!(t::Any, x::EXPR, context::LintContext) = nothing
 
 
 
 pass_of(t::UnusedFunction) = :global
-function pass!(t::UnusedFunction, x::EXPR, markers::Dict{Symbol,String})
-
+function pass!(t::UnusedFunction, x::EXPR, context::LintContext)
+    @info "blah!!"
 end
 
 
 
-function check(t::UnusedFunction, x::EXPR, markers::Dict{Symbol,String})
+function check(t::UnusedFunction, x::EXPR, context::LintContext)
 
     # We hit a function call. We need to check if this call is in the current context.
     if x.head == :call && x.args[1].head == :IDENTIFIER

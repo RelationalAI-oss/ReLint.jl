@@ -15,6 +15,12 @@
         @test c.rules_to_run == dts
 
         @test iszero(LintContext([]).rules_to_run)
+
+        c = LintContext(["LogStatementsMustBeSafe"])
+        @test !isnothing(c.global_markers)
+        @test !isnothing(c.local_markers)
+        @test isempty(c.global_markers)
+        @test isempty(c.local_markers)
     end
 
     @testset "Non-existing rule" begin
@@ -38,6 +44,7 @@
         @test count_lint_errors(source; context=LintContext([LogStatementsMustBeSafe])) == 0
         @test count_lint_errors(source; context=LintContext([UnsafeRule])) == 1
 
+        isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
         @test count_lint_errors(source; context=LintContext(["LogStatementsMustBeSafe"])) == 0
         @test count_lint_errors(source; context=LintContext(["UnsafeRule"])) == 1
     end

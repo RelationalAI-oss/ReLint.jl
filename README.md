@@ -5,10 +5,10 @@ code, such patterns aiming to indicate issues and deserve to be reported to the 
 ReLint.jl is inspired from [StaticLint.jl](https://github.com/julia-vscode/StaticLint.jl)
 while being versatile. In particular, highlights of ReLint include:
 
-    - Lint rules can be easily added;
-    - ReLint.jl is runnable from a GitHub Action workflow;
-    - ReLint.jl offer a [pre-commit](https://pre-commit.com/) hook, useful to run it at each commit;
-    - ReLint.jl is lightweight and fast.
+- Lint rules can be easily added;
+- ReLint.jl is runnable from a GitHub Action workflow;
+- ReLint.jl offer a [pre-commit](https://pre-commit.com/) hook, useful to run it at each commit;
+- ReLint.jl is lightweight and fast.
 
 ## Installing and Running ReLint
 

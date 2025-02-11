@@ -1883,7 +1883,9 @@ end
 
                     expected = r"""
                         Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
+                        Line 2, column 3: Use `@spawn` instead of `@async`. \H+/bar.jl
                         Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/foo.jl
+                        Line 2, column 3: Use `@spawn` instead of `@async`. \H+/foo.jl
                         4 potential threats are found: 2 fatal violations, 2 violations and 0 recommendation
                         Note that the list above only show fatal violations
                         """

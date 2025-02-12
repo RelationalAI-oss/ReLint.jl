@@ -494,7 +494,10 @@ function check(t::UvRule, x::EXPR)
         "`uv_` functions should be used with extreme caution.")
 end
 
-function check(t::SplattingRule, x::EXPR)
+function check(t::SplattingRule, x::EXPR, markers::Dict{Symbol,String})
+    contains(markers[:filename], "test.jl") && return
+    contains(markers[:filename], "tests.jl") && return
+
     generic_check(
         t,
         x,

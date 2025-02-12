@@ -107,9 +107,8 @@ julia --project=$RELINTPATH -e "
   @info \"Running lint on \$(length(all_files)) files\"
 
   formatter = ReLint.PreCommitFormat()
-  # context = LintContext([\"LogStatementsMustBeSafe\"])
   context = LintContext($RULE)
-  @info \"context\" context
+  @info \"Running $(length(context)) rules on $(length(all_files)) files and folders\"
 
   # Run lint on all files
   for f in all_files

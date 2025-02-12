@@ -223,13 +223,11 @@ end
 print_footer(::PreCommitFormat, io::IO) = nothing
 function print_summary(::PreCommitFormat, io::IO, result::LintResult)
     print_summary(PlainFormat(), io, result)
-    printstyled(io, "Note that the list above only show fatal violations\n", color=:red)
 end
 
 function print_report(::PreCommitFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
     should_print_report(result) || return
-    # Do not print anything if it is not a fatal violation
-    lint_report.rule isa FatalLintRule || return
+
     printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color=:green)
     print(io, " ")
     print(io, lint_report.msg)
@@ -281,7 +279,6 @@ function print_report(::PlainFormat, io::IO, lint_report::LintRuleReport, result
     print(io, " ")
     println(io, lint_report.file)
     result.printout_count += 1
-
 end
 
 function print_summary(

@@ -12,3 +12,11 @@
   language: script
   entry: ./scripts/run_julia_lint.sh
   types: [file]
+
+- id: lint-fatal-checks
+  args: [--rule, LogStatementsMustBeSafe, --rule, NonFrontShapeAPIUsageRule]
+  name: lint-fatal-checks
+  description: Checks for unsafe logs on Julia code base
+  language: script
+  entry: ./scripts/run_julia_lint.sh
+  types: [file]

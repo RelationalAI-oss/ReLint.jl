@@ -796,6 +796,31 @@ end
         @test result_matching
     end
 
+    @testset "No splatting warning in tests" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar_test.jl"), "w") do io2
+                    write(io1, "function f()\n  foo(x...)\nend\n")
+                    write(io2, "\n\nfunction g()\n  foo(x...)\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
+
+                    result = String(take!(str))
+
+                    expected = " - **Line 2, column 3:** Splatting (`...`) should be used with extreme caution."
+                    result_matching = startswith(result, expected)
+                    result_matching = result_matching && !contains(result, "bar_test.jl")
+                end
+            end
+        end
+        @test result_matching
+    end
+
     @testset "Report generation of two files with errors" begin
         local result_matching = false
         mktempdir() do dir

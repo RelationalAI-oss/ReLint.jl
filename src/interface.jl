@@ -70,6 +70,15 @@ function has_values(l::LintResult, a, b, c)
 end
 
 
+function do_passes!(context::LintContext, x::EXPR)
+    for T in context.rules_to_run
+        t = T()
+        if require_pass(t)
+            pass!(t, x, context)
+        end
+    end
+end
+
 """
     lint_file(rootpath, context)
 
@@ -79,8 +88,9 @@ function lint_file(rootpath, context::LintContext)
     file_content_string = open(io->read(io, String), rootpath, "r")
     ast = CSTParser.parse(file_content_string, true)
 
-    markers::Dict{Symbol,String} = Dict(:filename => rootpath)
-    check_all(ast, markers, context)
+    context.local_markers[:filename] = rootpath
+    do_passes!(context, ast)
+    check_all(ast, context)
 
     lint_rule_reports = []
 

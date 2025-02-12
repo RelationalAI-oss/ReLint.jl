@@ -310,10 +310,10 @@ struct SplattingRule <: RecommendationLintRule end
 struct UnreachableBranchRule <: ViolationLintRule end
 struct StringInterpolationRule <: ViolationLintRule end
 struct RelPathAPIUsageRule <: ViolationLintRule end
-struct NonFrontShapeAPIUsageRule <: ViolationLintRule end
 struct InterpolationInSafeLogRule <: RecommendationLintRule end
 struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
+struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(

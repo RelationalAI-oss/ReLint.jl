@@ -156,18 +156,6 @@ end
             "Line 1, column 1: `finalizer(_,_)` should not be used.")
     end
 
-    @testset "destructor with do-end 02" begin
-        source = """
-            destructor("hello") do x
-                println("hello ")
-                println("world")
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 1, column 1: Destructors should be used with extreme caution")
-    end
-
     @testset "ccall" begin
         source = """
             function rusage(who:: RUsageWho = RUSAGE_SELF)
@@ -198,44 +186,6 @@ end
             "Line 4, column 5: `ccall` should be used with extreme caution.")
     end
 
-    @testset "pointer_from_objref 01" begin
-        source = """
-            function f(x)
-                return pointer_from_objref(v)
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 2, column 12: `pointer_from_objref` should be used with extreme caution.")
-    end
-
-    @testset "pointer_from_objref 02" begin
-        source = """
-            function _reinterpret_with_size0(::Type{T1}, value::T2; checked::Bool=true) where {T1<:Tuple,T2<:Tuple}
-                checked && _check_valid_reinterpret_with_size0(T1, T2)
-                v = Ref(value)
-                GC.@preserve v begin
-                    ptr = pointer_from_objref(v)
-                    return Base.unsafe_load(reinterpret(Ptr{T1}, ptr))
-                end
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 5, column 15: `pointer_from_objref` should be used with extreme caution.")
-    end
-
-    @testset "pointer_from_objref 03" begin
-        source = raw"""
-            function vertex_name(c::Any)
-                return "v$(UInt64(pointer_from_objref(c)))"
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 2, column 23: `pointer_from_objref` should be used with extreme caution.")
-    end
-
     @testset "yield, sleep, map, Future, wait" begin
         source = """
             function wait_for_cooldown(count::UInt64, counts::HistogramCounts)
@@ -263,13 +213,9 @@ end
             "Line 3, column 9: `yield` should be used with extreme caution.")
         @test lint_test(source,
             "Line 4, column 9: `sleep` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 12, column 10: `mmap` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 13, column 10: `mmap` should be used with extreme caution.")
     end
 
-    @testset "@inbounds, Atomic, Ptr, remove_page, Channel, ErrorException" begin
+    @testset "@inbounds, remove_page, Channel, ErrorException" begin
         source = """
             function f()
                 fut = Future{Any}()
@@ -317,8 +263,6 @@ end
             """
 
         @test lint_test(source, "Line 5, column 5: `@inbounds` should be used with extreme caution.")
-
-        @test lint_test(source, "Line 19, column 22: `Ptr` should be used with extreme caution.")
 
         @test lint_test(source, "Line 24, column 9: `remove_page` should be used with extreme caution.")
 

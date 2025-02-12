@@ -282,17 +282,13 @@ abstract type FatalLintRule <: LintRule end
 
 struct AsyncRule <: ViolationLintRule end
 struct CcallRule <: RecommendationLintRule end
-struct Pointer_from_objrefRule <: RecommendationLintRule end
 struct InitializingWithFunctionRule <: ViolationLintRule end
 struct FinalizerRule <: RecommendationLintRule end
 struct CFunctionRule <: RecommendationLintRule end
-struct DestructorRule <: RecommendationLintRule end
 struct UnlockRule <: RecommendationLintRule end
 struct YieldRule <: RecommendationLintRule end
 struct SleepRule <: RecommendationLintRule end
-struct MmapRule <: RecommendationLintRule end
 struct InboundsRule <: RecommendationLintRule end
-struct PtrRule <: RecommendationLintRule end
 struct ArrayWithNoTypeRule <: ViolationLintRule end
 struct ThreadsRule <: RecommendationLintRule end
 struct GeneratedRule <: RecommendationLintRule end
@@ -382,7 +378,6 @@ function check(t::AsyncRule, x::EXPR)
 end
 
 check(t::CcallRule, x::EXPR) = generic_check(t, x, "ccall(hole_variable, hole_variable, hole_variable, hole_variable_star)", "`ccall` should be used with extreme caution.")
-check(t::Pointer_from_objrefRule, x::EXPR) = generic_check(t, x, "pointer_from_objref(hole_variable)", "`pointer_from_objref` should be used with extreme caution.")
 
 function check(t::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,String})
     # If we are not in a const statement, then we exit this function.
@@ -394,23 +389,11 @@ end
 
 check(t::CFunctionRule, x::EXPR) = generic_check(t, x, "@cfunction(hole_variable, hole_variable_star)", "Macro `@cfunction` should not be used.")
 
-function check(t::DestructorRule, x::EXPR)
-    error_msg = "Destructors should be used with extreme caution."
-    generic_check(t, x, "destructor(hole_variable, hole_variable)", error_msg)
-    generic_check(t, x, "destructor(hole_variable) do hole_variable hole_variable_star end", error_msg)
-end
-
 check(t::UnlockRule, x::EXPR) = generic_check(t, x, "unlock(hole_variable)")
 check(t::YieldRule, x::EXPR) = generic_check(t, x, "yield()")
 check(t::SleepRule, x::EXPR) = generic_check(t, x, "sleep(hole_variable)")
-function check(t::MmapRule, x::EXPR)
-    generic_check(t, x, "mmap(hole_variable_star)")
-    generic_check(t, x, "Mmap.mmap(hole_variable_star)", "`mmap` should be used with extreme caution.")
-end
 
 check(t::InboundsRule, x::EXPR) = generic_check(t, x, "@inbounds hole_variable")
-
-check(t::PtrRule, x::EXPR) = generic_check(t, x, "Ptr{hole_variable}(hole_variable)")
 
 function check(t::ArrayWithNoTypeRule, x::EXPR, markers::Dict{Symbol,String})
     haskey(markers, :filename) || return

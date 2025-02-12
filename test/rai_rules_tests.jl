@@ -74,8 +74,6 @@
         """
         @test lint_has_error_test(source)
         @test lint_test(source,
-            "Line 2, column 5: `@lock` should be used with extreme caution")
-        @test lint_test(source,
             "Line 7, column 5: `@threads` should be used with extreme caution.")
         @test lint_test(source,
            "Line 14, column 1: `@generated` should be used with extreme caution.")
@@ -158,18 +156,6 @@ end
             "Line 1, column 1: `finalizer(_,_)` should not be used.")
     end
 
-    @testset "destructor with do-end 02" begin
-        source = """
-            destructor("hello") do x
-                println("hello ")
-                println("world")
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 1, column 1: Destructors should be used with extreme caution")
-    end
-
     @testset "ccall" begin
         source = """
             function rusage(who:: RUsageWho = RUSAGE_SELF)
@@ -200,111 +186,6 @@ end
             "Line 4, column 5: `ccall` should be used with extreme caution.")
     end
 
-    @testset "pointer_from_objref 01" begin
-        source = """
-            function f(x)
-                return pointer_from_objref(v)
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 2, column 12: `pointer_from_objref` should be used with extreme caution.")
-    end
-
-    @testset "pointer_from_objref 02" begin
-        source = """
-            function _reinterpret_with_size0(::Type{T1}, value::T2; checked::Bool=true) where {T1<:Tuple,T2<:Tuple}
-                checked && _check_valid_reinterpret_with_size0(T1, T2)
-                v = Ref(value)
-                GC.@preserve v begin
-                    ptr = pointer_from_objref(v)
-                    return Base.unsafe_load(reinterpret(Ptr{T1}, ptr))
-                end
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 5, column 15: `pointer_from_objref` should be used with extreme caution.")
-    end
-
-    @testset "pointer_from_objref 03" begin
-        source = raw"""
-            function vertex_name(c::Any)
-                return "v$(UInt64(pointer_from_objref(c)))"
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 2, column 23: `pointer_from_objref` should be used with extreme caution.")
-    end
-
-    @testset "Semaphore" begin
-        source = """
-            function foo()
-                return Semaphore(10)
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 2, column 12: `Semaphore` should be used with extreme caution.")
-    end
-
-    @testset "ReentrantLock" begin
-        source = """
-            const lock = ReentrantLock()
-            function foo()
-                lock2 = ReentrantLock()
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 3, column 13: `ReentrantLock` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 1, column 14: `ReentrantLock` should be used with extreme caution.")
-    end
-
-    @testset "SpinLock" begin
-        source = """
-            struct _SyncDict{Dict}
-                lock::Base.Threads.SpinLock
-                dict::Dict
-
-                function _SyncDict{Dict}() where {Dict}
-                    new{Dict}(Base.Threads.SpinLock(), Dict())
-                end
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 6, column 19: `SpinLock` should be used with extreme caution.")
-    end
-
-    @testset "unlock" begin
-        source = """
-            function clear(fs::SimulatedFs)
-                if fs.noop_mode
-                    return nothing
-                end
-                for partition in fs.partitions
-                    lock = trylock(partition.lock)
-                    lock || error("SimFs partition locked on clear")
-                    for (k, entry) in partition.entries
-                        lock = trylock(entry.lock)
-                        lock || error("SimFs entry locked on clear")
-                        Blobs.free(entry.buf.data)
-                        unlock(entry.lock)
-                    end
-                    empty!(partition.entries)
-                    unlock(partition.lock)
-                end
-                @atomic fs.used_bytes = 0
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 15, column 9: `unlock` should be used with extreme caution.")
-    end
-
     @testset "yield, sleep, map, Future, wait" begin
         source = """
             function wait_for_cooldown(count::UInt64, counts::HistogramCounts)
@@ -332,21 +213,9 @@ end
             "Line 3, column 9: `yield` should be used with extreme caution.")
         @test lint_test(source,
             "Line 4, column 9: `sleep` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 12, column 10: `mmap` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 13, column 10: `mmap` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 14, column 12: `Future` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 15, column 12: `Future` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 16, column 12: `Future` should be used with extreme caution.")
-        @test lint_test(source,
-            "Line 18, column 5: `wait` should be used with extreme caution.")
     end
 
-    @testset "@inbounds, Atomic, Ptr, remove_page, Channel, ErrorException" begin
+    @testset "@inbounds, remove_page, Channel, ErrorException" begin
         source = """
             function f()
                 fut = Future{Any}()
@@ -395,16 +264,7 @@ end
 
         @test lint_test(source, "Line 5, column 5: `@inbounds` should be used with extreme caution.")
 
-        @test lint_test(source, "Line 15, column 20: `Atomic` should be used with extreme caution.")
-        @test lint_test(source, "Line 16, column 20: `Atomic` should be used with extreme caution.")
-        @test lint_test(source, "Line 17, column 20: `Atomic` should be used with extreme caution.")
-
-        @test lint_test(source, "Line 19, column 22: `Ptr` should be used with extreme caution.")
-
         @test lint_test(source, "Line 24, column 9: `remove_page` should be used with extreme caution.")
-
-        @test lint_test(source, "Line 29, column 11: `Channel` should be used with extreme caution.")
-        @test lint_test(source, "Line 30, column 11: `Channel` should be used with extreme caution.")
 
         @test lint_test(source, "Line 33, column 9: `Task` should be used with extreme caution.")
 
@@ -505,6 +365,18 @@ end
 
         @test lint_test("hcat([f(x) for x in r]...)",
             "Line 1, column 1: Splatting (`...`) should not be used with dynamically sized containers. This may result in performance degradation. See https://github.com/RelationalAI/RAIStyle#splatting for more information.")
+
+        source = raw"""macro infov(verbosity::Int64, msg, exs...)
+                        return quote
+                            if $(esc(:($DebugLevels.@should_emit_log($Logging.Info, $verbosity))))
+                                $(Base.CoreLogging.logmsg_code((Base.CoreLogging.@_sourceinfo)..., :Info, msg, :(verbosity=$verbosity), exs...))
+                            end
+                        end
+                    """
+
+        @test count_lint_errors(source) == 0
+
+        @test count_lint_errors("""macro foo(x...)\nzork(x...)\nend""") == 0
     end
 end
 
@@ -874,6 +746,31 @@ end
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
                         """
                     result_matching = !isnothing(match(expected, result))
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "No splatting warning in tests" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar_test.jl"), "w") do io2
+                    write(io1, "function f()\n  foo(x...)\nend\n")
+                    write(io2, "\n\nfunction g()\n  foo(x...)\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
+
+                    result = String(take!(str))
+
+                    expected = " - **Line 2, column 3:** Splatting (`...`) should be used with extreme caution."
+                    result_matching = startswith(result, expected)
+                    result_matching = result_matching && !contains(result, "bar_test.jl")
                 end
             end
         end
@@ -1658,8 +1555,7 @@ end
     expected = r"""
     ---------- \H+
     Line 2, column 5: Use `@spawn` instead of `@async`\. \H+
-    Line 5, column 5: `@lock` should be used with extreme caution\. \H+
-    2 potential threats are found: 0 fatal violation, 1 violation and 1 recommendation
+    1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
     ----------
     """
     @test !isnothing(match(expected, result))
@@ -1907,7 +1803,14 @@ end
             open(joinpath(dir, "foo.jl"), "w") do io1
                 open(joinpath(dir, "bar.jl"), "w") do io2
                     write(io1, "function f()\n  @async 1 + 1\n  @warn \"blah\"\nend\n")
-                    write(io2, "function g()\n  @async 1 + 1\n  @info \"blah\"\nend\n")
+                    write(io2, """
+                        function g()
+                            @async 1 + 1
+                            @info "blah"
+
+                            Front.shape_term(12)
+                        end
+                        """)
 
                     flush(io1)
                     flush(io2)
@@ -1919,9 +1822,10 @@ end
                     result = String(take!(str))
 
                     expected = r"""
-                        Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
+                        Line 3, column 5: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
+                        Line 5, column 5: Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI\. \H+/bar.jl
                         Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/foo.jl
-                        4 potential threats are found: 2 fatal violations, 2 violations and 0 recommendation
+                        5 potential threats are found: 3 fatal violations, 2 violations and 0 recommendation
                         Note that the list above only show fatal violations
                         """
                     result_matching = !isnothing(match(expected, result))

@@ -5,10 +5,10 @@ code, such patterns aiming to indicate issues and deserve to be reported to the 
 ReLint.jl is inspired from [StaticLint.jl](https://github.com/julia-vscode/StaticLint.jl)
 while being versatile. In particular, highlights of ReLint include:
 
-    - Lint rules can be easily added;
-    - ReLint.jl is runnable from a GitHub Action workflow;
-    - ReLint.jl offer a [pre-commit](https://pre-commit.com/) hook, useful to run it at each commit;
-    - ReLint.jl is lightweight and fast.
+- Lint rules can be easily added;
+- ReLint.jl is runnable from a GitHub Action workflow;
+- ReLint.jl offer a [pre-commit](https://pre-commit.com/) hook, useful to run it at each commit;
+- ReLint.jl is lightweight and fast.
 
 ## Installing and Running ReLint
 
@@ -62,8 +62,8 @@ The expression above outputs 1928 potential threats.
 
 You may want to contribute to ReLint.jl for many reasons. Here are a few of them:
 
-- _A rule needs to be better documented_. It is easy to do so: create a PR to this repository that improves one of the rules defined [HERE](https://github.com/RelationalAI/StaticLint.jl/blob/main/src/linting/extended_checks.jl). This `extended_checks.jl` file contains all the RAI-specific rules.
-- _A new rule has to be defined_. As our system grows and evolves, new rules may have to be defined. The beginning of the file [extended_checks.jl](https://github.com/RelationalAI/StaticLint.jl/blob/main/src/linting/extended_checks.jl) and the section below detail this process. You can always ask `@Alexandre Bergel` on Slack for assistance. Create a new PR with the rule.
+- _A rule needs to be better documented_. It is easy to do so: create a PR to this repository that improves one of the rules defined [HERE]([https://github.com/RelationalAI-oss/ReLint.jl/blob/main/src/linting/extended_checks.jl]). This `extended_checks.jl` file contains all the RAI-specific rules.
+- _A new rule has to be defined_. As a system grows and evolves, new rules may have to be defined. The beginning of the file [extended_checks.jl](https://github.com/RelationalAI-oss/ReLint.jl/blob/main/src/linting/extended_checks.jl) and the section below detail this process. You can always ask `@Alexandre Bergel` on Slack for assistance. Create a new PR with the rule.
 
 ## Lint rules
 
@@ -99,8 +99,9 @@ The different markers currently supported are:
 | Marker  | Value  |
 |:------------- |:---------------|
 | `:const`        | Const variable name  |
-| `:function`         | Function name          |
-| `:macrocall`         | Macro name          |
+| `:function`         | Function definition name          |
+| `:macro`         | Macro definition name          |
+| `:macrocall`         | Macro call name          |
 | `:filename`         | Path and name of the analyzed file          |
 
 If you wish to run a particular rule only in a directory, you could do:
@@ -112,11 +113,11 @@ function check(::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,Sym
 end
 ```
 
-This will run the `"Threads.nthreads()"` described earlier in all folders expect in `myfolder`.
+This will run the `"Threads.nthreads()"` described earlier in all folders except in `myfolder`.
 
-## Locally disabling StaticLint
+## Locally disabling ReLint
 
-StaticLint can be locally disabled. For now, only for a given line. E.g.,
+ReLint can be locally disabled. For now, only for a given line. E.g.,
 
 ```Julia
 function f1()
@@ -156,22 +157,22 @@ end
 
 ## Integration with GitHub Action
 
-In addition to being run locally, as described above, StaticLint can be run via GitHub
-Action. When a PR is created, StaticLint is run on the files modified in this PR and the
+In addition to being run locally, as described above, ReLint can be run via GitHub
+Action. When a PR is created, ReLint is run on the files modified in this PR and the
 result is posted as a comment.
-Only one report of StaticLint is posted in a PR, and it gets updated at each commit.
+Only one report of ReLint is posted in a PR, and it gets updated at each commit.
 
 ## Listing all violations
 
-Currently, StaticLint limits the output of the report. In total, the number of reported
+Currently, ReLint limits the output of the report. In total, the number of reported
 violations and recommendations does not exceed 60. This limit is set by the variable
 `MAX_REPORTED_ERRORS`. You may want to increase it if you wish to have the full report
-from StaticLint.
+from ReLint.
 
 ## Fork
 
-This repository is a fork of https://github.com/julia-vscode/StaticLint.jl. The decision to
+This repository was originally a fork of https://github.com/julia-vscode/StaticLint.jl but no code from StaticLint can be found. The decision to
 fork this project instead of directly contributing to it was not taken lightly. First, the
 julia-vscode/StaticLint.jl is not designed to be easily and modularly extended. As such
-using the original StaticLint with our RAI-specific rules was not an easy or even feasible
+extending the original StaticLint with specific rules was not an easy or even feasible
 task.

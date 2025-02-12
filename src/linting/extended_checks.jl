@@ -92,6 +92,10 @@ function check_all(
         markers[:function] = fetch_value(x, :IDENTIFIER)
     end
 
+    if headof(x) === :macro
+        markers[:macro] = fetch_value(x, :IDENTIFIER)
+    end
+
     if headof(x) === :macrocall
         id = fetch_value(x, :IDENTIFIER)
         if !isnothing(id)
@@ -119,6 +123,7 @@ function check_all(
     headof(x) === :const && delete!(markers, :const)
     headof(x) === :function && delete!(markers, :function)
     headof(x) === :macrocall && delete!(markers, :macrocall)
+    headof(x) === :macro && delete!(markers, :macro)
 end
 
 
@@ -497,6 +502,7 @@ end
 function check(t::SplattingRule, x::EXPR, markers::Dict{Symbol,String})
     contains(markers[:filename], "test.jl") && return
     contains(markers[:filename], "tests.jl") && return
+    haskey(markers, :macro) && return
 
     generic_check(
         t,

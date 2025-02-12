@@ -421,6 +421,18 @@ end
 
         @test lint_test("hcat([f(x) for x in r]...)",
             "Line 1, column 1: Splatting (`...`) should not be used with dynamically sized containers. This may result in performance degradation. See https://github.com/RelationalAI/RAIStyle#splatting for more information.")
+
+        source = raw"""macro infov(verbosity::Int64, msg, exs...)
+                        return quote
+                            if $(esc(:($DebugLevels.@should_emit_log($Logging.Info, $verbosity))))
+                                $(Base.CoreLogging.logmsg_code((Base.CoreLogging.@_sourceinfo)..., :Info, msg, :(verbosity=$verbosity), exs...))
+                            end
+                        end
+                    """
+
+        @test count_lint_errors(source) == 0
+
+        @test count_lint_errors("""macro foo(x...)\nzork(x...)\nend""") == 0
     end
 end
 

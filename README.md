@@ -99,8 +99,9 @@ The different markers currently supported are:
 | Marker  | Value  |
 |:------------- |:---------------|
 | `:const`        | Const variable name  |
-| `:function`         | Function name          |
-| `:macrocall`         | Macro name          |
+| `:function`         | Function definition name          |
+| `:macro`         | Macro definition name          |
+| `:macrocall`         | Macro call name          |
 | `:filename`         | Path and name of the analyzed file          |
 
 If you wish to run a particular rule only in a directory, you could do:

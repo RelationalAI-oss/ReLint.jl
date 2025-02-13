@@ -557,6 +557,7 @@ function check(t::NonFrontShapeAPIUsageRule, x::EXPR, markers::Dict{Symbol,Strin
     contains(markers[:filename], "src/FrontCompiler") && return
     contains(markers[:filename], "src/FFI") && return
     contains(markers[:filename], "src/FrontIR") && return
+    contains(markers[:filename], "packages/Shapes") && return
     # Also, allow usages in tests
     contains(markers[:filename], "test/") && return
     # Also, allow usages of the name `Shape` in `packages/` although they refer to a different thing.

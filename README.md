@@ -184,5 +184,5 @@ task.
  - Make a rule block a PR using pre-commit:
    - Create a rule subtype of `FatalLintRule`
    - If the rule can be run with other (fatal lint) rules, then you should modify the hook `XXX` in the file `.pre-commit-hooks.yaml`
-   - _If the rule should be run in a pre-commit job _(in parallel with other pre-commit jobs), then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
+   - _If the rule should be run in a pre-commit job_ (in parallel with other pre-commit jobs), then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
 

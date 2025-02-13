@@ -176,3 +176,11 @@ fork this project instead of directly contributing to it was not taken lightly. 
 julia-vscode/StaticLint.jl is not designed to be easily and modularly extended. As such
 extending the original StaticLint with specific rules was not an easy or even feasible
 task.
+
+## Update process
+
+ - Adding a new rule:
+   - if the rule should only appear in the PR comment, then simply add the rule to ReLint.jl
+ - Make a rule block a PR using pre-commit:
+   - If the rule should be run in a pre-commit job, then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
+   - If the rule can be run with other (fatal lint) rules, then you should modify the hook `XXX` in the file `.pre-commit-hooks.yaml`

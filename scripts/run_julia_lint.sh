@@ -39,7 +39,7 @@ while [[ $# -gt 0 ]]; do
   # echo "DEBUG: " $1
   case $1 in
     -r|--rule)
-      RULE="$2"
+      RULE+="\"$2\", "
       shift # past argument
       shift # past value
       ;;
@@ -77,7 +77,7 @@ fi
 # If no rule was set, when we have the empty rule
 # Else, we set it for Julia
 if [[ ! -z "$RULE" ]] ; then
-  RULE="[\"$RULE\"]"
+  RULE="[ $RULE ]"
 fi
 
 # Initializing some variables

@@ -309,7 +309,7 @@ struct RelPathAPIUsageRule <: ViolationLintRule end
 struct InterpolationInSafeLogRule <: RecommendationLintRule end
 struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
-struct AssertionStatementsMustBeSafe <: ViolationLintRule end
+struct AssertionStatementsMustBeSafe <: FatalLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(

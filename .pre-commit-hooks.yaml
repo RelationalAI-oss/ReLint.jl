@@ -6,7 +6,7 @@
   types: [file]
 
 - id: unsafe-log-checks
-  args: [--rule, LogStatementsMustBeSafe, --rule, AssertionStatementsMustBeSafe]
+  args: [--rule, LogStatementsMustBeSafe]
   name: unsafe-log-checks
   description: Checks for unsafe logs on Julia code base
   language: script

@@ -179,8 +179,10 @@ task.
 
 ## Update process
 
- - Adding a new rule:
-   - if the rule should only appear in the PR comment, then simply add the rule to ReLint.jl
+Here is a helper for two common processes when updating Lint rules:
+
+ - Adding a new non-fatal rule to ReLint:
+   - if the rule should only appear in the PR comment, then simply add the rule to ReLint.jl. No need to update the GitHub repo client.
  - Make a rule block a PR using pre-commit:
    - Create a rule subtype of `FatalLintRule`. Merge the PR containing this rule in `main` of ReLint.jl
    - If the rule can be run with other (fatal lint) rules, then you should modify the hook `lint-fatal-checks` in the file `.pre-commit-hooks.yaml`, in ReLint.jl

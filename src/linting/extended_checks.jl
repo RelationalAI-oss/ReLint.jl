@@ -18,8 +18,10 @@
 mutable struct LintContext
     rules_to_run::Vector{DataType}
 
-    global_markers::Dict{Symbol,String}
-    local_markers::Dict{Symbol,String}
+    global_markers::Dict{Symbol,Any}
+    local_markers::Dict{Symbol,Any}
+
+    passes::Dict{DataType,Symbol}
 
     function LintContext(dts_as_str::Vector{String})
         dt = DataType[]
@@ -32,7 +34,7 @@ mutable struct LintContext
     end
 
     function LintContext(s::Vector{DataType})
-        return new(s, Dict{Symbol,String}(), Dict{Symbol,String}())
+        return new(s, Dict{Symbol,String}(), Dict{Symbol,String}(), Dict{DataType,Symbol}())
     end
     LintContext(s::Vector{Any}) = LintContext(convert(Vector{DataType}, s))
     LintContext() = LintContext(all_extended_rule_types[])
@@ -679,7 +681,24 @@ pass!(t::Any, x::EXPR, context::LintContext) = nothing
 
 pass_of(t::UnusedFunction) = :global
 function pass!(t::UnusedFunction, x::EXPR, context::LintContext)
-    @info "blah!!"
+    # Pass already done
+    # haskey(context.passes, typeof(t)) && return
+
+    if !haskey(context.global_markers, :defined_function)
+        context.global_markers[:defined_function] = Set()
+    end
+
+    if headof(x) === :function
+        function_name = fetch_value(x, :IDENTIFIER)
+        push!(context.global_markers[:defined_function], function_name)
+    end
+
+    # We recurse over the AST
+    if x.args !== nothing
+        for i in 1:length(x.args)
+            pass!(t, x.args[i], context)
+        end
+    end
 end
 
 

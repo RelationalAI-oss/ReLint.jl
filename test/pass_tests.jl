@@ -23,6 +23,21 @@ using ReLint: require_pass, pass_of, LogStatementsMustBeSafe, UnusedFunction
             # unused function
             zork() = h() + 1
             """
+        context = LintContext()
 
+        @test isempty(context.global_markers)
+        result = run_lint_on_text(source; context)
+
+        @test haskey(context.passes, UnusedFunction)
+        @test context.passes[UnusedFunction] == :global
+
+        @test haskey(context.global_markers, :defined_function)
+
+        defined_functions = context.global_markers[:defined_function]
+        @test !isempty(defined_functions)
+
+        for x in ["f"]
+            @test x in defined_functions
+        end
     end
 end

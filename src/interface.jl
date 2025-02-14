@@ -75,6 +75,7 @@ function do_passes!(context::LintContext, x::EXPR)
         t = T()
         if require_pass(t)
             pass!(t, x, context)
+            context.passes[T] = pass_of(t)
         end
     end
 end

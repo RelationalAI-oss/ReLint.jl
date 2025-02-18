@@ -311,6 +311,7 @@ struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
 struct AssertionStatementsMustBeSafe <: ViolationLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
+struct RethrowAndExceptionRule <: ViolationLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -659,3 +660,16 @@ function check(t::AssertionStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,S
     end
 end
 
+function check(t::RethrowAndExceptionRule, x::EXPR)
+    generic_check(
+        t,
+        x,
+        "try
+            hole_variable_star
+        catch hole_variableA
+            hole_variable_star
+            rethrow(hole_variableA)
+            hole_variable_star
+        end",
+        "Change `rethrow(e)` into `rethrow()`.")
+end

@@ -583,8 +583,14 @@ function check(t::UseOfStaticThreads, x::EXPR)
 end
 
 function all_arguments_are_safe(x::EXPR; skip_first_arg::Bool=false)
+
     is_safe_macro_call(y) =
-        y.head == :macrocall && y.args[1].head == :IDENTIFIER && y.args[1].val == "@safe"
+        (y.head == :macrocall && y.args[1].head == :IDENTIFIER && y.args[1].val == "@safe") ||
+        (y.head == :macrocall &&
+         y.args[1].head isa EXPR &&
+         y.args[1].head.head == :OPERATOR &&
+         y.args[1].args[1].args[1].val == "SafeLogging" &&
+         y.args[1].args[2].args[1].val == "@safe")
 
     is_safe_literal(x) = x.head in [:NOTHING,
                                     :INTEGER,

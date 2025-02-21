@@ -161,12 +161,15 @@ end
             function rusage(who:: RUsageWho = RUSAGE_SELF)
                 ru = Vector{RUsage}(undef, 1)
                 ccall(:getrusage, Cint, (Cint, Ptr{Cvoid}), who, ru)
+                ccall(:jl_print_task_backtraces, Cvoid, ())
                 return ru[1]
             end
             """
-        @test lint_has_error_test(source)
+        @test count_lint_errors(source) == 2
         @test lint_test(source,
             "Line 3, column 5: `ccall` should be used with extreme caution.")
+        @test lint_test(source,
+            "Line 4, column 5: `ccall` should be used with extreme caution.")
     end
 
     @testset "ccall 02" begin

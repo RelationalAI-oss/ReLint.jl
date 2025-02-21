@@ -424,6 +424,9 @@ check(t::RemovePageRule, x::EXPR) = generic_check(t, x, "remove_page(hole_variab
 check(t::TaskRule, x::EXPR) = generic_check(t, x, "Task(hole_variable)")
 
 function check(t::ErrorExceptionRule, x::EXPR)
+    haskey(markers, :filename) || return
+    contains(markers[:filename], "test.jl") || return
+    contains(markers[:filename], "tests.jl") || return
     generic_check(
         t,
         x,
@@ -432,6 +435,9 @@ function check(t::ErrorExceptionRule, x::EXPR)
 end
 
 function check(t::ErrorRule, x::EXPR)
+    haskey(markers, :filename) || return
+    contains(markers[:filename], "test.jl") || return
+    contains(markers[:filename], "tests.jl") || return
     generic_check(
         t,
         x,

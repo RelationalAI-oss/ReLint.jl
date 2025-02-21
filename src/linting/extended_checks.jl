@@ -423,10 +423,10 @@ end
 check(t::RemovePageRule, x::EXPR) = generic_check(t, x, "remove_page(hole_variable,hole_variable)")
 check(t::TaskRule, x::EXPR) = generic_check(t, x, "Task(hole_variable)")
 
-function check(t::ErrorExceptionRule, x::EXPR)
+function check(t::ErrorExceptionRule, x::EXPR, markers::Dict{Symbol,String})
     haskey(markers, :filename) || return
-    contains(markers[:filename], "test.jl") || return
-    contains(markers[:filename], "tests.jl") || return
+    contains(markers[:filename], "test.jl") && return
+    contains(markers[:filename], "tests.jl") && return
     generic_check(
         t,
         x,
@@ -434,10 +434,10 @@ function check(t::ErrorExceptionRule, x::EXPR)
         "Use custom exception instead of the generic `ErrorException`.")
 end
 
-function check(t::ErrorRule, x::EXPR)
+function check(t::ErrorRule, x::EXPR, markers::Dict{Symbol,String})
     haskey(markers, :filename) || return
-    contains(markers[:filename], "test.jl") || return
-    contains(markers[:filename], "tests.jl") || return
+    contains(markers[:filename], "test.jl") && return
+    contains(markers[:filename], "tests.jl") && return
     generic_check(
         t,
         x,

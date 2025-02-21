@@ -55,8 +55,44 @@
             @dassert3 1 == 1 # Okay
             @dassert3 1 == 1 "not okay"
             @dassert3 1 == 1 @safe("Okay")
-        end
-        """
+            end
+            """
         @test count_lint_errors(source) == 2
+    end
+
+    @testset "@safe in a macro 1" begin
+        source = raw"""
+            macro spawn_periodic_task(name, period, expr, ending_expr=nothing)
+                error_msg = "Periodic task name must be `@safe(\"name\")`, so it can be logged: $(__source__)"
+                @dassert0 is_safe_expr_literal(name) @safe(error_msg)
+
+                return quote
+                    n = $(esc(name))
+                    p = $(esc(period))
+                    # And therefore n is safe to log.
+                    @dassert0 n isa $SafeLoggable $SafeLogging.@safe($(error_msg))
+                    n = string(n)
+                end
+            end
+            """
+        @test count_lint_errors(source) == 0
+    end
+
+    @testset "@safe in a macro 2" begin
+        source = raw"""
+            macro foo()
+                @info @safe("error_msg")
+            end
+            """
+        @test count_lint_errors(source) == 0
+    end
+
+    @testset "@safe in a macro 3" begin
+        source = raw"""
+            macro foo()
+                @info $SafeLogging.@safe("error_msg")
+            end
+            """
+        @test count_lint_errors(source) == 0
     end
 end

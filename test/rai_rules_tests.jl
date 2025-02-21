@@ -1838,3 +1838,17 @@ end
         @test result_matching
     end
 end
+
+@testset "Forbid @show" begin
+    source = """
+        function f()
+            @show "foo"
+            @show 1 + 1
+        end
+        """
+    @test count_lint_errors(source) == 2
+    @test lint_test(source,
+        "Line 2, column 5: Do not use `@show`, use `@info` instead.")
+    @test lint_test(source,
+        "Line 3, column 5: Do not use `@show`, use `@info` instead.")
+end

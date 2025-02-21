@@ -311,6 +311,7 @@ struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
 struct AssertionStatementsMustBeSafe <: ViolationLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
+struct MustNotUseShow <: FatalLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -665,3 +666,7 @@ function check(t::AssertionStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,S
     end
 end
 
+function check(t::MustNotUseShow, x::EXPR)
+    msg = "Do not use `@show`, use `@info` instead."
+    generic_check(t, x, "@show hole_variable", msg)
+end

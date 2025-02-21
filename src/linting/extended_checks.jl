@@ -378,7 +378,7 @@ function check(t::AsyncRule, x::EXPR)
     generic_check(t, x, "Threads.@async hole_variable", msg)
 end
 
-check(t::CcallRule, x::EXPR) = generic_check(t, x, "ccall(hole_variable, hole_variable, hole_variable, hole_variable_star)", "`ccall` should be used with extreme caution.")
+check(t::CcallRule, x::EXPR) = generic_check(t, x, "ccall(hole_variable_star)", "`ccall` should be used with extreme caution.")
 
 function check(t::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,String})
     # If we are not in a const statement, then we exit this function.

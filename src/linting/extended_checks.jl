@@ -631,6 +631,7 @@ end
 function check(t::LogStatementsMustBeSafe, x::EXPR, markers::Dict{Symbol,String})
     if haskey(markers, :filename)
         contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "bench/") && return
     end
 
     error_msg = "Unsafe logging statement. You must enclose variables and strings with `@safe(...)`."

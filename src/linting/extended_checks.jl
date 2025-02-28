@@ -428,6 +428,7 @@ function check(t::ErrorExceptionRule, x::EXPR, markers::Dict{Symbol,String})
     haskey(markers, :filename) || return
     contains(markers[:filename], "test.jl") && return
     contains(markers[:filename], "tests.jl") && return
+    contains(markers[:filename], "bench/") && return
     generic_check(
         t,
         x,
@@ -439,6 +440,7 @@ function check(t::ErrorRule, x::EXPR, markers::Dict{Symbol,String})
     haskey(markers, :filename) || return
     contains(markers[:filename], "test.jl") && return
     contains(markers[:filename], "tests.jl") && return
+    contains(markers[:filename], "bench/") && return
     generic_check(
         t,
         x,

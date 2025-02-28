@@ -53,10 +53,10 @@ function seterror!(x::EXPR, e)
     x.meta.error = e
 end
 
-function fetch_value(x::EXPR, tag::Symbol, should_fetch_value::Bool=true)
+function fetch_value(x::EXPR, tag::Symbol, should_get_value::Bool=true)
     if headof(x) == tag
         # @info x
-        if should_fetch_value
+        if should_get_value
             return x.val
         else # return the AST
             return x
@@ -64,25 +64,17 @@ function fetch_value(x::EXPR, tag::Symbol, should_fetch_value::Bool=true)
     else
         isnothing(x.args) && return nothing
         for i in 1:length(x.args)
-            r = fetch_value(x.args[i], tag, should_fetch_value)
+            r = fetch_value(x.args[i], tag, should_get_value)
             isnothing(r) || return r
         end
         return nothing
     end
 end
 
-# function fetch_value(x::EXPR, tag::Symbol)
-#     if headof(x) == tag
-#         return x.val
-#     else
-#         isnothing(x.args) && return nothing
-#         for i in 1:length(x.args)
-#             r = fetch_value(x.args[i], tag)
-#             isnothing(r) || return r
-#         end
-#         return nothing
-#     end
-# end
+function fetch_values(x::EXPR, tag::Symbol, should_get_value::Bool=true)
+    # TODO!!!
+end
+
 function collect_lint_report(x::EXPR, isquoted=false, errs=Tuple{Int,EXPR}[], pos=0)
     if haserror(x)
         push!(errs, (pos, x))
@@ -719,6 +711,10 @@ function check(t::NoinlineAndLiteralRule, x::EXPR)
     if x.head == :macrocall &&
         x.args[1].head == :IDENTIFIER &&
         x.args[1].val == "@noinline"
+
+        # Are we in a function definition?
+        function_def = fetch_value(x, :function, false)
+        isnothing(function_def) || return
 
         fct_call = fetch_value(x, :call, false)
 

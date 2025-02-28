@@ -53,18 +53,36 @@ function seterror!(x::EXPR, e)
     x.meta.error = e
 end
 
-function fetch_value(x::EXPR, tag::Symbol)
+function fetch_value(x::EXPR, tag::Symbol, should_fetch_value::Bool=true)
     if headof(x) == tag
-        return x.val
+        # @info x
+        if should_fetch_value
+            return x.val
+        else # return the AST
+            return x
+        end
     else
         isnothing(x.args) && return nothing
         for i in 1:length(x.args)
-            r = fetch_value(x.args[i], tag)
+            r = fetch_value(x.args[i], tag, should_fetch_value)
             isnothing(r) || return r
         end
         return nothing
     end
 end
+
+# function fetch_value(x::EXPR, tag::Symbol)
+#     if headof(x) == tag
+#         return x.val
+#     else
+#         isnothing(x.args) && return nothing
+#         for i in 1:length(x.args)
+#             r = fetch_value(x.args[i], tag)
+#             isnothing(r) || return r
+#         end
+#         return nothing
+#     end
+# end
 function collect_lint_report(x::EXPR, isquoted=false, errs=Tuple{Int,EXPR}[], pos=0)
     if haserror(x)
         push!(errs, (pos, x))
@@ -312,6 +330,7 @@ struct LogStatementsMustBeSafe <: FatalLintRule end
 struct AssertionStatementsMustBeSafe <: FatalLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
+struct NoinlineAndLiteralRule <: FatalLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -678,4 +697,35 @@ end
 function check(t::MustNotUseShow, x::EXPR)
     msg = "Do not use `@show`, use `@info` instead."
     generic_check(t, x, "@show hole_variable", msg)
+end
+
+
+function all_arguments_are_literal_or_identifier(x::EXPR)
+    is_literal(x) = x.head in [:NOTHING,
+        :INTEGER,
+        :FLOAT,
+        :TRUE,
+        :FALSE,
+        :HEXINT,
+        :BININT,
+        :CHAR,
+        :OCTINT,
+        :STRING
+        ]
+    return all(is_literal, x.args[2:end])
+end
+
+function check(t::NoinlineAndLiteralRule, x::EXPR)
+    if x.head == :macrocall &&
+        x.args[1].head == :IDENTIFIER &&
+        x.args[1].val == "@noinline"
+
+        isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+        fct_call = fetch_value(x, :call, false)
+
+        # Weird, no function call?
+        isnothing(fct_call) && return
+
+        all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, "`@noinline` must be used with literals only."))
+    end
 end

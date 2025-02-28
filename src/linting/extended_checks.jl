@@ -720,7 +720,6 @@ function check(t::NoinlineAndLiteralRule, x::EXPR)
         x.args[1].head == :IDENTIFIER &&
         x.args[1].val == "@noinline"
 
-        isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
         fct_call = fetch_value(x, :call, false)
 
         # Weird, no function call?

@@ -1,5 +1,5 @@
 @testset "Noinline" begin
-    using ReLint: LintContext, UseOfStaticThreads, LogStatementsMustBeSafe, UnsafeRule
+    using ReLint
 
     source = raw"""
         function with_errors()
@@ -18,5 +18,4 @@
     @test lint_test(source, "Line 3, column 5: `@noinline` must be used with literals only.")
     @test lint_test(source, "Line 4, column 5: `@noinline` must be used with literals only.")
     @test lint_test(source, "Line 5, column 5: `@noinline` must be used with literals only.")
-
 end

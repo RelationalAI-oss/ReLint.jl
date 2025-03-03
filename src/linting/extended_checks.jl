@@ -53,18 +53,30 @@ function seterror!(x::EXPR, e)
     x.meta.error = e
 end
 
-function fetch_value(x::EXPR, tag::Symbol)
-    if headof(x) == tag
-        return x.val
+# Calling fetch_value with recursion_depth = 0 means no recursion will happen
+function fetch_value(x::EXPR, tag::Symbol, should_get_value::Bool=true, recursion_depth::Int=-1, skip_head::Bool=false)
+    if headof(x) == tag && !skip_head
+        # @info x
+        if should_get_value
+            return x.val
+        else # return the AST
+            return x
+        end
     else
         isnothing(x.args) && return nothing
+        iszero(recursion_depth) && return nothing
         for i in 1:length(x.args)
-            r = fetch_value(x.args[i], tag)
+            r = fetch_value(x.args[i], tag, should_get_value, recursion_depth-1, false)
             isnothing(r) || return r
         end
         return nothing
     end
 end
+
+function fetch_values(x::EXPR, tag::Symbol, should_get_value::Bool=true)
+    # TODO!!!
+end
+
 function collect_lint_report(x::EXPR, isquoted=false, errs=Tuple{Int,EXPR}[], pos=0)
     if haserror(x)
         push!(errs, (pos, x))
@@ -312,6 +324,7 @@ struct LogStatementsMustBeSafe <: FatalLintRule end
 struct AssertionStatementsMustBeSafe <: FatalLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
+struct NoinlineAndLiteralRule <: FatalLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -678,4 +691,55 @@ end
 function check(t::MustNotUseShow, x::EXPR)
     msg = "Do not use `@show`, use `@info` instead."
     generic_check(t, x, "@show hole_variable", msg)
+end
+
+
+function all_arguments_are_literal_or_identifier(x::EXPR)
+    is_literal(x) = x.head in [:NOTHING,
+        :INTEGER,
+        :FLOAT,
+        :TRUE,
+        :FALSE,
+        :HEXINT,
+        :BININT,
+        :CHAR,
+        :OCTINT,
+        :STRING
+        ]
+    is_identifier(x) = x.head == :IDENTIFIER
+    is_literal_or_identifier(x) = is_literal(x) || is_identifier(x)
+
+    return all(is_literal_or_identifier, x.args[2:end])
+end
+
+function check(t::NoinlineAndLiteralRule, x::EXPR)
+    if x.head == :macrocall &&
+        x.args[1].head == :IDENTIFIER &&
+        x.args[1].val == "@noinline"
+
+        # Are we in a function definition?
+        function_def = fetch_value(x, :function, false)
+        isnothing(function_def) || return
+
+        # Retrieve function call below the @noinline macro
+        fct_call = fetch_value(x, :call, false, 1)
+
+        msg = "For call-site `@noinline` call, all args must be literals or identifiers only. \
+        Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086)."
+
+        # We found no function call, check for a macro call then
+        if isnothing(fct_call)
+            macro_call = fetch_value(x, :macrocall, false, -1, true)
+
+            # If we have not found a macro call, then we merely exit.
+            # could happen with `@noinline 42` for example
+            isnothing(macro_call) && return
+
+            # We found a macro call
+            seterror!(x, LintRuleReport(t, msg))
+        else
+            # We found a function call, check if all arguments are literals or identifiers
+            all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, msg))
+        end
+    end
 end

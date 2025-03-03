@@ -53,8 +53,9 @@ function seterror!(x::EXPR, e)
     x.meta.error = e
 end
 
-function fetch_value(x::EXPR, tag::Symbol, should_get_value::Bool=true)
-    if headof(x) == tag
+# Calling fetch_value with recursion_depth = 0 means no recursion will happen
+function fetch_value(x::EXPR, tag::Symbol, should_get_value::Bool=true, recursion_depth::Int=-1, skip_head::Bool=false)
+    if headof(x) == tag && !skip_head
         # @info x
         if should_get_value
             return x.val
@@ -63,8 +64,9 @@ function fetch_value(x::EXPR, tag::Symbol, should_get_value::Bool=true)
         end
     else
         isnothing(x.args) && return nothing
+        iszero(recursion_depth) && return nothing
         for i in 1:length(x.args)
-            r = fetch_value(x.args[i], tag, should_get_value)
+            r = fetch_value(x.args[i], tag, should_get_value, recursion_depth-1, false)
             isnothing(r) || return r
         end
         return nothing
@@ -719,11 +721,25 @@ function check(t::NoinlineAndLiteralRule, x::EXPR)
         function_def = fetch_value(x, :function, false)
         isnothing(function_def) || return
 
-        fct_call = fetch_value(x, :call, false)
+        # Retrieve function call below the @noinline macro
+        fct_call = fetch_value(x, :call, false, 1)
 
-        # Weird, no function call?
-        isnothing(fct_call) && return
+        msg = "For call-site `@noinline` call, all args must be literals or identifiers only. \
+        Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086)."
 
-        all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, "For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086)."))
+        # We found no function call, check for a macro call then
+        if isnothing(fct_call)
+            macro_call = fetch_value(x, :macrocall, false, -1, true)
+
+            # If we have not found a macro call, then we merely exit.
+            # could happen with `@noinline 42` for example
+            isnothing(macro_call) && return
+
+            # We found a macro call
+            seterror!(x, LintRuleReport(t, msg))
+        else
+            # We found a function call, check if all arguments are literals or identifiers
+            all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, msg))
+        end
     end
 end

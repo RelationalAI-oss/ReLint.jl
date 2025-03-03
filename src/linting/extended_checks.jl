@@ -704,7 +704,10 @@ function all_arguments_are_literal_or_identifier(x::EXPR)
         :OCTINT,
         :STRING
         ]
-    return all(is_literal, x.args[2:end])
+    is_identifier(x) = x.head == :IDENTIFIER
+    is_literal_or_identifier(x) = is_literal(x) || is_identifier(x)
+
+    return all(is_literal_or_identifier, x.args[2:end])
 end
 
 function check(t::NoinlineAndLiteralRule, x::EXPR)
@@ -721,6 +724,6 @@ function check(t::NoinlineAndLiteralRule, x::EXPR)
         # Weird, no function call?
         isnothing(fct_call) && return
 
-        all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, "`@noinline` must be used with literals only."))
+        all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, "For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086)."))
     end
 end

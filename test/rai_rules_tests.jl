@@ -343,9 +343,13 @@ end
                 a = uv_foo(10, 20)
                 b = ∈(10, [10])
                 c = 10 ∈ [10]
+
+                # No error
+                d = [x for x in 1:10]
+                groupby_vars = [v for v in child_vars if !tin(v, sort_input.vars)]
             end
             """
-        @test lint_has_error_test(source)
+        @test count_lint_errors(source) == 7
         @test lint_test(source,
             "Line 2, column 9: Use `tin(item,collection)` instead of the Julia's `in`")
         @test lint_test(source,

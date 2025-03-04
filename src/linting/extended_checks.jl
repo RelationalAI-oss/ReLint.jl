@@ -709,12 +709,21 @@ function all_arguments_are_literal_or_identifier(x::EXPR)
         :STRING
         ]
     is_identifier(x) = x.head == :IDENTIFIER
-    is_literal_or_identifier(x) = is_literal(x) || is_identifier(x)
+    is_literal_or_identifier(x) =
+        if x.head == :parameters || x.head == :kw
+            all(is_literal_or_identifier, x.args)
+        else
+            is_literal(x) || is_identifier(x)
+        end
 
     return all(is_literal_or_identifier, x.args[2:end])
 end
 
 function check(t::NoinlineAndLiteralRule, x::EXPR)
+    if does_match(x, "@noinline hole_variable() = hole_variable_star")
+        return
+    end
+
     if x.head == :macrocall &&
         x.args[1].head == :IDENTIFIER &&
         x.args[1].val == "@noinline"

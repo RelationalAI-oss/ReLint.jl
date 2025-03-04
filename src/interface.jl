@@ -105,7 +105,7 @@ function lint_file(rootpath, context::LintContext)
             end
         end
     end
-    return "TODO", 0, lint_rule_reports
+    return lint_rule_reports
 end
 
 # Return (index_line, index_column, annotation) for a given offset in a source
@@ -379,8 +379,8 @@ function run_lint(
     endswith(rootpath, ".jl") || return result
 
     # We are running Lint on a Julia file
-    _,_,lint_reports = ReLint.lint_file(rootpath, context)
-    print_header(formatter, io, rootpath)
+    lint_reports = ReLint.lint_file(rootpath, context)
+    isempty(lint_reports) || print_header(formatter, io, rootpath)
 
     is_recommendation(r::LintRuleReport) = r.rule isa RecommendationLintRule
     is_violation(r::LintRuleReport) = r.rule isa ViolationLintRule
@@ -392,7 +392,7 @@ function run_lint(
 
     count_violations = length(violation_reports)
     count_recommendations = length(recommandation_reports)
-    count_fataviolations = length(fatalviolation_reports)
+    count_fatalviolations = length(fatalviolation_reports)
 
     # Fatal reports are printed in io_violations, but first
     io_tmp = isnothing(io_violations) ? io : io_violations
@@ -411,7 +411,7 @@ function run_lint(
     end
 
     # We run Lint on a single file.
-    append!(result, LintResult(1, count_violations, count_recommendations, count_fataviolations, [rootpath], 0, lint_reports))
+    append!(result, LintResult(1, count_violations, count_recommendations, count_fatalviolations, [rootpath], 0, lint_reports))
     return result
 end
 

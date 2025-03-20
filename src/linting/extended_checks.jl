@@ -709,14 +709,15 @@ function all_arguments_are_literal_or_identifier(x::EXPR)
         :STRING
         ]
     is_identifier(x) = x.head == :IDENTIFIER
-    is_literal_or_identifier(x) =
+    is_splatting(x) = x.head isa EXPR && x.head.head == :OPERATOR && x.head.val == "..."
+    is_literal_or_identifier_or_splatting(x) =
         if x.head == :parameters || x.head == :kw
-            all(is_literal_or_identifier, x.args)
+            all(is_literal_or_identifier_or_splatting, x.args)
         else
-            is_literal(x) || is_identifier(x)
+            is_literal(x) || is_identifier(x) || is_splatting(x)
         end
 
-    return all(is_literal_or_identifier, x.args[2:end])
+    return all(is_literal_or_identifier_or_splatting, x.args[2:end])
 end
 
 function check(t::NoinlineAndLiteralRule, x::EXPR)

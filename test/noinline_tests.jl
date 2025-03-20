@@ -24,6 +24,13 @@
             @noinline get_page(pager, magic, pid; is_prefetch=true)
             @noinline get_page(pager, magic, pid; is_prefetch=false)
             @noinline get_page(pager, magic, pid; is_prefetch)
+
+            # lint-disable-next-line: Splatting (`...`)
+            @noinline foo(x...)
+            # lint-disable-next-line: Splatting (`...`)
+            @noinline foo(x, y...)
+            # lint-disable-next-line: Splatting (`...`)
+            @noinline foo(x; kws...)
         end
 
         @noinline function no_error(x::Int=y.a)

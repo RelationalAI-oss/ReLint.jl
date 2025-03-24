@@ -91,7 +91,7 @@ echo "RELINTPATH PATH                 =" $RELINTPATH
 echo "FILES_TO_RUN                    =" $FILES_TO_RUN
 
 echo "About to run ReLint.jl..."
-julia --project=$RELINTPATH -e "
+julia --startup-file=no --history-file=no --project=$RELINTPATH -e "
   import Pkg
   Pkg.instantiate()
 

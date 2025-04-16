@@ -27,8 +27,9 @@ mutable struct LintResult
     linted_files::Vector{String}
     printout_count::Integer
     lintrule_reports::Vector{LintRuleReport}
+    branch::String  # The branch on which we got the result
 
-    LintResult(a, b, c, d, e, f, g) = new(a, b, c, d, e, f, g)
+    LintResult(args...) = new(args...)
 end
 
 LintResult() = LintResult(0, 0, 0)
@@ -36,6 +37,7 @@ LintResult(a, b, c) = LintResult(a, b, c, 0)
 LintResult(a, b, c, d) = LintResult(a, b, c, d, String[])
 LintResult(a, b, c, d, e) = LintResult(a, b, c, d, e, 0)
 LintResult(a, b, c, d, e, f) = LintResult(a, b, c, d, e, f, LintRuleReport[])
+LintResult(a, b, c, d, e, f, g) = LintResult(a, b, c, d, e, f, LintRuleReport[], "master")
 
 
 function Base.append!(l1::LintResult, l2::LintResult)
@@ -471,6 +473,7 @@ function print_datadog_report(
     violation_count::Integer,
     recommandation_count::Integer,
     fatalviolations_count::Integer,
+    branch::String,
 )
     event = Dict(
         :source => "ReLint",
@@ -483,6 +486,7 @@ function print_datadog_report(
                     :violation_count => violation_count,
                     :recommandation_count => recommandation_count,
                     :fatalviolations_count => recommandation_count,
+                    :branch => branch,
                     )
     )
     println(json_output, JSON3.write(event))
@@ -553,6 +557,7 @@ function generate_report(
 
     # Result of the whole analysis
     lint_result = LintResult()
+    lint_result.branch = branch_name
 
     # If analyze_all_file_found_locally is set to true, we discard all the provided files
     # and analyze everything accessible from "."
@@ -633,7 +638,14 @@ function generate_report(
     end
 
     report_as_string = open(output_filename) do io read(io, String) end
-    print_datadog_report(json_output, report_as_string, lint_result.files_count, lint_result.violations_count, lint_result.recommendations_count, lint_result.fatalviolations_count)
+    print_datadog_report(
+        json_output,
+        report_as_string,
+        lint_result.files_count,
+        lint_result.violations_count,
+        lint_result.recommendations_count,
+        lint_result.fatalviolations_count,
+        lint_result.branch,)
 
     # If a json_filename was provided, we are writing the result in json_output.
     # In that case, we need to close the stream at the end.

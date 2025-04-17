@@ -1,0 +1,44 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: mixed-line-ending
+        exclude: (.proto|.multipart)
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+        exclude: (\.proto$|\.multipart$|\.diff$|\.patch$|\.cpp$|\.c$|\.h$|\.cc$|\.svg$)
+
+  - repo: https://github.com/RelationalAI-oss/ReLint.jl
+    rev: v0.1.4
+    hooks:
+      - id: lint-fatal-checks
+        name: Look for fatal lint violations
+        types: ["file", "julia", "non-executable", "text"]
+        exclude: |
+          (?x)^(
+            test.jl |
+            src/version.jl |
+            packages/jet_test_utils.jl |
+            src/Test/jcompile-stats.jl |
+            src/Test/integration.jl |
+
+            build/.* |
+            .github/.* |
+            packages/RAI_Benchmarks/.* |
+            test_cloud/.* |
+            packages/Arroyo/bench/.* |
+            contrib/.* |
+            packages/RAI_Snoop/.* |
+            packages/Salsa/examples/.* |
+            test_spcs/.* |
+            test/.* |
+            bench/.* |
+            scripts/.* |
+            skaffold/.*
+          )

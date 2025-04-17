@@ -17,6 +17,62 @@ mutable struct LintRuleReport
 end
 LintRuleReport(rule::LintRule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
 
+# File exclusion
+struct LintFileExclusion
+    regex::String
+end
+function should_be_excluded(lfe::LintFileExclusion, filename::String)
+    # isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+    return !isnothing(match(Regex(lfe.regex), filename))
+end
+function should_be_excluded(lfes::Vector{LintFileExclusion}, filename::String)
+    return any(lfe -> should_be_excluded(lfe, filename), lfes)
+end
+
+# For a given pre-commit file configuration, the function extract the regex rules
+# that are used to exclude files from the linting process.
+function extract_file_exclusions_from_precommit_file(pre_commit_file::String)
+    # 3 states:
+    #   - outside the ReLint repo entry (initial state)
+    #   - inside the exclusion entry
+    #   - inside the ReLint repo entry and we are in the exclude section
+    state = :outside_repo_entry
+
+    file_exclusions = []
+    open(pre_commit_file, "r") do io
+        for line in eachline(io)
+            if state == :outside_repo_entry
+                # We are outside the ReLint repo entry
+                if contains(line, "lint-fatal-checks")
+                    # We are inside the ReLint repo entry
+                    # @info :inside_repo_entry
+                    state = :inside_repo_entry
+                    continue
+                end
+            elseif state == :inside_repo_entry
+                # @info :inside_repo_entry
+
+                if contains(line, "(?x)^(")
+                    # We are inside the ReLint repo entry
+                    state = :inside_exclusion_entry
+                    continue
+                end
+            elseif state == :inside_exclusion_entry
+                # @info :inside_exclusion_entry
+
+                # We are leaving the exclusion portion
+                if contains(line, ")")
+                    state = :outside_repo_entry
+                    continue
+                end
+                regex_rule = strip(line, ['{', '}', '\n', ' ', '|'])
+                !isempty(regex_rule) && push!(file_exclusions, LintFileExclusion(regex_rule))
+            end
+        end
+    end
+    return file_exclusions
+end
+
 
 # Global result of executing Lint on files and folders
 mutable struct LintResult
@@ -380,6 +436,9 @@ function run_lint(
     # This simplify the amount of work in GitHub Action
     endswith(rootpath, ".jl") || return result
 
+    # We should ignore this file?
+    should_be_excluded(convert(Vector{LintFileExclusion}, context.regex_exclusions), rootpath) && return result
+
     # We are running Lint on a Julia file
     lint_reports = ReLint.lint_file(rootpath, context)
     isempty(lint_reports) || print_header(formatter, io, rootpath)
@@ -538,6 +597,7 @@ function generate_report(
     analyze_all_file_found_locally::Bool=false,
     stream_workflowcommand::IO=stdout,
     rules_to_run::Vector{DataType}=all_extended_rule_types[],
+    pre_commit_file::String="",
 )
     if isfile(output_filename)
         @error "File $(output_filename) exist already."
@@ -586,6 +646,10 @@ function generate_report(
 
 
         context = LintContext(rules_to_run)
+        if !isempty(pre_commit_file)
+            context.regex_exclusions = extract_file_exclusions_from_precommit_file(pre_commit_file)
+        end
+
         # @info "Will check rules:" rules_to_run
 
         # RUN LINT!!!

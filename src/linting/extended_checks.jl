@@ -15,8 +15,11 @@
 #################################################################################
 
 
+# abstract type LintFileExclusion end
+
 struct LintContext
     rules_to_run::Vector{DataType}
+    regex_exclusions #::Vector{LintFileExclusion}
 
     function LintContext(dts_as_str::Vector{String})
         dt = DataType[]
@@ -25,12 +28,13 @@ struct LintContext
             isnothing(ind) && error("Non-existing rule: $(dt_as_str)")
             push!(dt, all_extended_rule_types[][ind])
         end
-        return new(dt)
+        return new(dt, [])
     end
 
-    LintContext(s::Vector{DataType}) = new(s)
-    LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s))
-    LintContext() = new(all_extended_rule_types[])
+    LintContext(s::Vector{DataType}) = new(s, [])
+    LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s) , [])
+    LintContext() = new(all_extended_rule_types[], [])
+    LintContext(a, b) = new(a, b)
 end
 
 #################################################################################

@@ -645,9 +645,13 @@ function generate_report(
         io_recommendations = IOBuffer()
 
 
-        context = LintContext(rules_to_run)
+        local context
         if !isempty(pre_commit_file)
-            context.regex_exclusions = extract_file_exclusions_from_precommit_file(pre_commit_file)
+            fe = extract_file_exclusions_from_precommit_file(pre_commit_file)
+            context = LintContext(rules_to_run, fe)
+            @info "Pre-commit file exclusions: $(fe)"
+        else
+            context = LintContext(rules_to_run)
         end
 
         # @info "Will check rules:" rules_to_run

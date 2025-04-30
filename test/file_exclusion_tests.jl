@@ -73,4 +73,47 @@
         end
         @test result_matching
     end
+
+    @testset "Generating report" begin
+        local result_matching = false
+
+        mktempdir() do dir
+            file1_name = joinpath(dir, "test.jl")
+            file2_name = joinpath(dir, "bar.jl")
+
+            open(file1_name, "w") do io1
+                open(file2_name, "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\nend\n")
+                    write(io2, "function g()\n      @async 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    re = extract_file_exclusions_from_precommit_file(precommit_full_path)
+                    context = LintContext(ReLint.all_extended_rule_types[], re)
+
+                    # Run the linter on the directory
+                    output_file = tempname()
+                    ReLint.generate_report(
+                        [file1_name, file2_name],
+                        output_file;
+
+                        json_filename=tempname(),
+                        stream_workflowcommand=devnull,
+                        pre_commit_file=precommit_full_path)
+
+                    result = open(output_file, "r") do io read(io, String) end
+
+                    # Only one of the files is linted
+                    expected = r"""
+                         - \*\*Line 2, column 7:\*\* Use `@spawn` instead of `@async`\. \H+
+                        """
+
+                    result_matching = !isnothing(match(expected, result))
+                    result_matching || @info "DEBUG: $(result)"
+                end
+            end
+        end
+        @test result_matching
+    end
 end

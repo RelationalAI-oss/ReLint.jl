@@ -644,13 +644,14 @@ function generate_report(
         io_violations = IOBuffer()
         io_recommendations = IOBuffer()
 
-
-        context = LintContext(rules_to_run)
+        context = nothing
         if !isempty(pre_commit_file)
-            context.regex_exclusions = extract_file_exclusions_from_precommit_file(pre_commit_file)
+            context = LintContext(
+                rules_to_run,
+                extract_file_exclusions_from_precommit_file(pre_commit_file))
+        else
+            context = LintContext(rules_to_run)
         end
-
-        # @info "Will check rules:" rules_to_run
 
         # RUN LINT!!!
         for filename in julia_filenames

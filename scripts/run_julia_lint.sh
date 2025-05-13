@@ -91,36 +91,59 @@ echo "RELINTPATH PATH                 =" $RELINTPATH
 echo "FILES_TO_RUN                    =" $FILES_TO_RUN
 
 echo "About to run ReLint.jl..."
-julia --startup-file=no --history-file=no --project=$RELINTPATH -e "
-  import Pkg
-  Pkg.instantiate()
+MAX_RETRIES=5
+RETRY_DELAY=5
+ATTEMPT=0
 
-  using ReLint: ReLint, LintContext
-  result = ReLint.LintResult()
-  all_files_tmp=split(open(io->read(io, String), \"$FILES_TO_RUN\", \"r\"))
-  # convert substring into string
-  all_files=map(string, all_files_tmp)
-  # filter to existing Julia files only
-  all_files=filter(f->isfile(f) || isdir(f), all_files)
-  all_files=filter(f->endswith(f, \".jl\") || isdir(f), all_files)
+# This shell script may be run several times in parallel. Pre-commit does so
+# However, installation of Julia dependencies cannot be run in parallel.
+# So we have a retry mechanism.
+while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
+  ATTEMPT=$((ATTEMPT + 1))
+  echo "Attempt $ATTEMPT of $MAX_RETRIES to run ReLint.jl..."
 
-  @info \"Running lint on \$(length(all_files)) files\"
+  julia --startup-file=no --history-file=no --project=$RELINTPATH -e "
+    import Pkg
+    Pkg.instantiate()
 
-  formatter = ReLint.PreCommitFormat()
-  # context = LintContext([\"LogStatementsMustBeSafe\"])
-  context = LintContext($RULE)
-  @info \"context\" context
+    using ReLint: ReLint, LintContext
+    result = ReLint.LintResult()
+    all_files_tmp=split(open(io->read(io, String), \"$FILES_TO_RUN\", \"r\"))
+    all_files=map(string, all_files_tmp)
+    all_files=filter(f->isfile(f) || isdir(f), all_files)
+    all_files=filter(f->endswith(f, \".jl\") || isdir(f), all_files)
 
-  # Run lint on all files
-  for f in all_files
-    ReLint.run_lint(f; result, formatter, context)
-  end
+    @info \"Running lint on \$(length(all_files)) files\"
 
-  # Return an error if there is an unsafe log
-  if result.fatalviolations_count > 0
-    ReLint.print_summary(formatter, stdout, result)
-    @error \"Fatal error discovered\"
-    exit(1)
-  end
-  exit(0)
-"
+    formatter = ReLint.PreCommitFormat()
+    context = LintContext($RULE)
+    @info \"context\" context
+
+    for f in all_files
+      ReLint.run_lint(f; result, formatter, context)
+    end
+
+    if result.fatalviolations_count > 0
+      ReLint.print_summary(formatter, stdout, result)
+      @error \"Fatal error discovered\"
+      exit(1)
+    end
+    exit(0)
+  "
+
+  # Capture the exit status of the Julia command
+  EXIT_STATUS=$?
+
+  if [[ $EXIT_STATUS -eq 0 ]]; then
+    echo "ReLint.jl completed successfully."
+    exit 0
+  else
+    echo "ReLint.jl failed with exit code $EXIT_STATUS. Retrying in $RETRY_DELAY seconds..."
+    sleep $RETRY_DELAY
+  fi
+done
+
+if [[ $ATTEMPT -eq $MAX_RETRIES ]]; then
+  echo "ReLint.jl failed after $MAX_RETRIES attempts."
+  exit $EXIT_STATUS
+fi

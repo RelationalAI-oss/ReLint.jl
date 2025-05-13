@@ -816,6 +816,7 @@ end
 
                     @test json_report[:data][:violation_count] == 1
                     @test json_report[:data][:recommandation_count] == 1
+                    @test json_report[:data][:fatalviolations_count] == 0
 
                     local result
                     open(output_file) do oo

@@ -544,7 +544,7 @@ function print_datadog_report(
                     :files_count => files_count,
                     :violation_count => violation_count,
                     :recommandation_count => recommandation_count,
-                    :fatalviolations_count => recommandation_count,
+                    :fatalviolations_count => fatalviolations_count,
                     :branch => branch,
                     )
     )

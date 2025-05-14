@@ -104,7 +104,12 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
 
   julia --startup-file=no --history-file=no --project=$RELINTPATH -e "
     import Pkg
-    Pkg.instantiate()
+    try
+      Pkg.instantiate()
+    catch e
+      @error \"Cannot install dependencies. Retrying...\"
+      exit(2)
+    end
 
     using ReLint: ReLint, LintContext
     result = ReLint.LintResult()
@@ -137,6 +142,9 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
   if [[ $EXIT_STATUS -eq 0 ]]; then
     echo "ReLint.jl completed successfully."
     exit 0
+  elif [[ $EXIT_STATUS -eq 1 ]]; then
+    echo "ReLint.jl found fatal violations"
+    exit 1
   else
     echo "ReLint.jl failed with exit code $EXIT_STATUS. Retrying in $RETRY_DELAY seconds..."
     sleep $RETRY_DELAY

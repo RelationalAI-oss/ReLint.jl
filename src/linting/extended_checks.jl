@@ -352,7 +352,7 @@ function reset_static_lint_caches()
 end
 
 function get_oracle_ast(template_code::String)
-    get!(check_cache, template_code, CSTParser.parse(template_code))
+    get!(()->CSTParser.parse(template_code), check_cache, template_code)
     return check_cache[template_code]
 end
 

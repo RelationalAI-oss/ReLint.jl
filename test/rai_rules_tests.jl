@@ -1857,3 +1857,52 @@ end
     @test lint_test(source,
         "Line 3, column 5: Do not use `@show`, use `@info` instead.")
 end
+
+@testset "Forbid return in anonymous closure" begin
+    @testset "Anonymous function" begin
+        source = raw"""
+            function foo(f)
+                f()
+                return "foo"
+            end
+
+            foo(() -> begin return "anonymous function" end)
+            foo() do ; return "anonymous function" end
+            foo() do
+                return "anonymous function"
+            end
+
+            macro bar(x)
+                return :(($(x))())
+            end
+            @bar(() -> begin return "anonymous function" end)
+            @bar() do
+            return "blah"
+            end
+            @bar() do ; return "blah" end
+            """
+        @test count_lint_errors(source) == 6
+        @test lint_test(source,
+            "Line 6, column 17: Anonymous function must not have `return`.")
+        @test lint_test(source,
+            "Line 7, column 12: Anonymous function must not have `return`.")
+        @test lint_test(source,
+            "Line 9, column 5: Anonymous function must not have `return`.")
+        @test lint_test(source,
+            "Line 15, column 18: Anonymous function must not have `return`.")
+        @test lint_test(source,
+            "Line 17, column 1: Anonymous function must not have `return`.")
+        @test lint_test(source,
+            "Line 19, column 13: Anonymous function must not have `return`.")
+    end
+
+    @testset "make sure we restore the markers" begin
+        source = """
+            @bar(() -> begin "anonymous function" end)
+            function f()
+                return 12
+            end
+            """
+        @test count_lint_errors(source) == 0
+    end
+end

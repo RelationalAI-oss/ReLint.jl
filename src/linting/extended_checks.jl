@@ -94,6 +94,8 @@ function collect_lint_report(x::EXPR, isquoted=false, errs=Tuple{Int,EXPR}[], po
     errs
 end
 
+# TODO: Need to be careful here. We actually need a linked list of markers, and not
+# a dictionary.
 function check_all(
     x::EXPR,
     markers::Dict{Symbol,String} =Dict{Symbol,String}(),
@@ -119,6 +121,14 @@ function check_all(
         end
     end
 
+    if typeof(x) == EXPR && typeof(x.head) == EXPR && headof(x.head) === :OPERATOR && x.head.val == "->"
+        markers[:anonymous_function] = "anonymous"
+    end
+
+    if headof(x) === :do
+        markers[:anonymous_function] = "anonymous"
+    end
+
     for T in context.rules_to_run
         check_with_process(T, x, markers)
         if haserror(x) && x.meta.error isa LintRuleReport
@@ -140,6 +150,12 @@ function check_all(
     headof(x) === :function && delete!(markers, :function)
     headof(x) === :macrocall && delete!(markers, :macrocall)
     headof(x) === :macro && delete!(markers, :macro)
+    typeof(x) == EXPR &&
+        typeof(x.head) == EXPR &&
+        headof(x.head) === :OPERATOR &&
+        x.head.val == "->" &&
+        delete!(markers, :anonymous_function)
+    headof(x) === :do && delete!(markers, :anonymous_function)
 end
 
 
@@ -329,6 +345,7 @@ struct AssertionStatementsMustBeSafe <: FatalLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
 struct NoinlineAndLiteralRule <: FatalLintRule end
+struct NoReturnInAnonymousFunctionRule <: ViolationLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -758,4 +775,10 @@ function check(t::NoinlineAndLiteralRule, x::EXPR)
             all_arguments_are_literal_or_identifier(fct_call) || seterror!(x, LintRuleReport(t, msg))
         end
     end
+end
+
+function check(t::NoReturnInAnonymousFunctionRule, x::EXPR, markers::Dict{Symbol,String})
+    haskey(markers, :anonymous_function) || return
+    msg = "Anonymous function must not have `return`.[Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure)"
+    generic_check(t, x, "return hole_variable", msg)
 end

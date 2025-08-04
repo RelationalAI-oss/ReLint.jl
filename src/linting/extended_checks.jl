@@ -779,6 +779,6 @@ end
 
 function check(t::NoReturnInAnonymousFunctionRule, x::EXPR, markers::Dict{Symbol,String})
     haskey(markers, :anonymous_function) || return
-    msg = "Anonymous function must not have `return`."
+    msg = "Anonymous function must not have `return`.[Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure)"
     generic_check(t, x, "return hole_variable", msg)
 end

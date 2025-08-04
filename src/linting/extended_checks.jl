@@ -345,7 +345,7 @@ struct AssertionStatementsMustBeSafe <: FatalLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
 struct NoinlineAndLiteralRule <: FatalLintRule end
-struct NoReturnInAnonymousFunctionRule <: FatalLintRule end
+struct NoReturnInAnonymousFunctionRule <: ViolationLintRule end
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(

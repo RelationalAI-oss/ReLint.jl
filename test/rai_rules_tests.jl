@@ -1906,3 +1906,29 @@ end
         @test count_lint_errors(source) == 0
     end
 end
+
+@testset "Forbid import" begin
+    source = """
+        import foobar
+        import RelationalAI
+        import RelationalAI: rai_rules_tests
+        import RelationalAI: rai_rules_tests, rai_rules_tests2
+        import RelationalAI: rai_rules_tests, rai_rules_tests2, rai_rules_tests3
+        import RelationalAI: rai_rules_tests, rai_rules_tests2, rai_rules_tests3, rai_rules_tests4
+        import RelationalAI: rai_rules_tests, rai_rules
+
+        println("hello world")
+        """
+    @test count_lint_errors(source) == 7
+end
+
+@testset "Forbid using RAICode" begin
+    source = """
+        import RAICode
+        using RAICode
+        using RAICode: rai_rules_tests
+
+        println("hello world")
+        """
+    @test count_lint_errors(source) == 3
+end

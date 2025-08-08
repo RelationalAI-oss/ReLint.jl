@@ -346,6 +346,9 @@ struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
 struct NoinlineAndLiteralRule <: FatalLintRule end
 struct NoReturnInAnonymousFunctionRule <: ViolationLintRule end
+struct NoImportRule <: ViolationLintRule end
+struct NotImportingRAICodeRule <: ViolationLintRule end
+
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
@@ -781,4 +784,30 @@ function check(t::NoReturnInAnonymousFunctionRule, x::EXPR, markers::Dict{Symbol
     haskey(markers, :anonymous_function) || return
     msg = "Anonymous function must not have `return`.[Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure)"
     generic_check(t, x, "return hole_variable", msg)
+end
+
+function check(t::NoImportRule, x::EXPR, markers::Dict{Symbol,String})
+    msg = "Imports must be specified using `using` and not `import`."
+    generic_check(t, x, "import hole_variable", msg)
+
+    # Arbitrary number of hole variables
+    # TODO: This is hacky and it deserves a better solution.
+    for i in 1:15
+        s = join(["hole_variable" for _ in 1:i], ", ")
+        u = "import hole_variable : $(s)"
+        generic_check(t, x, u, msg)
+    end
+end
+
+function check(t::NotImportingRAICodeRule, x::EXPR, markers::Dict{Symbol,String})
+    msg = "Importing RAICode should be avoided (when possible)."
+    generic_check(t, x, "using RAICode", msg)
+
+        # Arbitrary number of hole variables
+    # TODO: This is hacky and it deserves a better solution.
+    for i in 1:15
+        s = join(["hole_variable" for _ in 1:i], ", ")
+        u = "using RAICode : $(s)"
+        generic_check(t, x, u, msg)
+    end
 end

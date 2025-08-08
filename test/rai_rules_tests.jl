@@ -1883,17 +1883,17 @@ end
             """
         @test count_lint_errors(source) == 6
         @test lint_test(source,
-            "Line 6, column 17: Anonymous function must not have `return`.")
+            "Line 6, column 17: Anonymous function must not have `return` [Explanation](https")
         @test lint_test(source,
-            "Line 7, column 12: Anonymous function must not have `return`.")
+            "Line 7, column 12: Anonymous function must not have `return` [Explanation](https")
         @test lint_test(source,
-            "Line 9, column 5: Anonymous function must not have `return`.")
+            "Line 9, column 5: Anonymous function must not have `return` [Explanation](https")
         @test lint_test(source,
-            "Line 15, column 18: Anonymous function must not have `return`.")
+            "Line 15, column 18: Anonymous function must not have `return` [Explanation](https")
         @test lint_test(source,
-            "Line 17, column 1: Anonymous function must not have `return`.")
+            "Line 17, column 1: Anonymous function must not have `return` [Explanation](https")
         @test lint_test(source,
-            "Line 19, column 13: Anonymous function must not have `return`.")
+            "Line 19, column 13: Anonymous function must not have `return` [Explanation](https")
     end
 
     @testset "make sure we restore the markers" begin

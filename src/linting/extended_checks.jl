@@ -604,7 +604,8 @@ function check(t::NonFrontShapeAPIUsageRule, x::EXPR, markers::Dict{Symbol,Strin
     # In the front-end and in FFI, we are allowed to refer to `Shape`
     contains(markers[:filename], "src/FrontCompiler") && return
     contains(markers[:filename], "src/FFI") && return
-    contains(markers[:filename], "src/FrontIR") && return
+    # We're allowing this for serialization.
+    contains(markers[:filename], "src/Database") && return
     contains(markers[:filename], "packages/Shapes") && return
     contains(markers[:filename], "packages/RAI_FrontIR") && return
     # Also, allow usages in tests

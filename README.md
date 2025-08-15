@@ -12,14 +12,10 @@ while being versatile. In particular, highlights of ReLint include:
 
 ## Installing and Running ReLint
 
-Installing and running ReLint.jl is easy:
+Installing and running ReLint.jl is easy. Several options are available:
 
-  - This repository can be cloned.
-  - You can define a GitHub workflow,
+  - Run in the Julia REPL `import Pkg ; Pkg.add(url="https://github.com/RelationalAI-oss/ReLint.jl")`
   - You can use our pre-commit hook.
-
-
-You just need to clone this repository _outside_ the Julia project you would like to analyze. Although you add it as a dependency, there is no good reason to mess up with your local `Project.toml` and `Manifest.toml`.
 
 ## Basic usage
 

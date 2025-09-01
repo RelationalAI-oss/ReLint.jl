@@ -745,7 +745,7 @@ function all_arguments_are_literal_or_identifier(x::EXPR)
 end
 
 function check(t::NoinlineAndLiteralRule, x::EXPR)
-    if does_match(x, "@noinline hole_variable() = hole_variable_star")
+    if does_match(x, "@noinline hole_variable(hole_variable_star) = hole_variable_star")
         return
     end
 
@@ -803,7 +803,7 @@ function check(t::NotImportingRAICodeRule, x::EXPR, markers::Dict{Symbol,String}
     msg = "Importing RAICode should be avoided (when possible)."
     generic_check(t, x, "using RAICode", msg)
 
-        # Arbitrary number of hole variables
+    # Arbitrary number of hole variables
     # TODO: This is hacky and it deserves a better solution.
     for i in 1:15
         s = join(["hole_variable" for _ in 1:i], ", ")

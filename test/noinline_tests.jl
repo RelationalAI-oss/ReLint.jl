@@ -39,7 +39,7 @@
         end
 
         @noinline foo() = 42
-        @noinline bar() = @assert false "unreachable"
+        @noinline bar(::Integer) = @assert false @safe("unreachable")
         @noinline _throw_empty_weight_list_exception() =
             throw(QueryEvaluatorInternalException(@safe("
                 Adjacency matrix materialization within a graph primitive assumes a \

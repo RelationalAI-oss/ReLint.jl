@@ -345,7 +345,7 @@ struct AssertionStatementsMustBeSafe <: FatalLintRule end
 struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
 struct NoinlineAndLiteralRule <: FatalLintRule end
-struct NoReturnInAnonymousFunctionRule <: ViolationLintRule end
+struct NoReturnInAnonymousFunctionRule <: FatalLintRule end
 struct NoImportRule <: ViolationLintRule end
 struct NotImportingRAICodeRule <: ViolationLintRule end
 

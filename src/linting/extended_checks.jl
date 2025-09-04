@@ -782,6 +782,11 @@ function check(t::NoinlineAndLiteralRule, x::EXPR)
 end
 
 function check(t::NoReturnInAnonymousFunctionRule, x::EXPR, markers::Dict{Symbol,String})
+    # No need to check for returns in anonymous function in tests
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+    end
+
     haskey(markers, :anonymous_function) || return
     msg = "Anonymous function must not have `return` [Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure)."
     generic_check(t, x, "return hole_variable", msg)

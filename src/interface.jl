@@ -689,15 +689,18 @@ function generate_report(
         if !has_julia_file
             println(output_io, "No Julia file is modified or added in this PR.")
         else
-            errors_count = lint_result.violations_count + lint_result.recommendations_count
+            errors_count = lint_result.violations_count +
+                            lint_result.recommendations_count +
+                            lint_result.fatalviolations_count
             if iszero(errors_count)
                 print(output_io, "🎉No potential threats are found over $(length(julia_filenames)) Julia file$(ending).👍\n\n")
             else
                 s_vio = lint_result.violations_count > 1 ? "s" : ""
                 s_rec = lint_result.recommendations_count > 1 ? "s" : ""
+                s_fvio = lint_result.fatalviolations_count > 1 ? "s" : ""
                 is_or_are = errors_count == 1 ? "is" : "are"
                 s_fil = lint_result.files_count > 1 ? "s" : ""
-                println(output_io, "🚨**In total, $(lint_result.violations_count) rule violation$(s_vio) and $(lint_result.recommendations_count) PR reviewer recommendation$(s_rec) $(is_or_are) found over $(lint_result.files_count) Julia file$(s_fil)**🚨")
+                println(output_io, "🚨**In total, $(lint_result.fatalviolations_count) fatal rule violation$(s_fvio), $(lint_result.violations_count) rule violation$(s_vio) and $(lint_result.recommendations_count) PR reviewer recommendation$(s_rec) $(is_or_are) found over $(lint_result.files_count) Julia file$(s_fil)**🚨")
             end
         end
     end

@@ -838,7 +838,7 @@ end
 
                         </details>
 
-                        🚨\*\*In total, 1 rule violation and 1 PR reviewer recommendation are found over 2 Julia files\*\*🚨
+                        🚨\*\*In total, 0 fatal rule violation, 1 rule violation and 1 PR reviewer recommendation are found over 2 Julia files\*\*🚨
                         """
                     result_matching = !isnothing(match(expected, result))
                     # DEBUG:
@@ -894,7 +894,7 @@ end
 
                         </details>
 
-                        🚨\*\*In total, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
+                        🚨\*\*In total, 0 fatal rule violation, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
                         """
                     result_matching = !isnothing(match(expected, result))
                     # DEBUG:
@@ -955,7 +955,7 @@ end
 
                         </details>
 
-                        🚨\*\*In total, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
+                        🚨\*\*In total, 0 fatal rule violation, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
                         """
                     result_matching = !isnothing(match(expected, result))
                     # DEBUG:
@@ -1222,7 +1222,7 @@ end
                 @test lines_count < 70
 
                 @test all_lines[end-2] == "⚠️Only a subset of the violations and recommandations are here reported⚠️"
-                @test all_lines[end-1] == "🚨**In total, 100 rule violations and 0 PR reviewer recommendation are found over 1 Julia file**🚨"
+                @test all_lines[end-1] == "🚨**In total, 0 fatal rule violation, 100 rule violations and 0 PR reviewer recommendation are found over 1 Julia file**🚨"
                 @test all_lines[end] == ""
             end
         end

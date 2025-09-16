@@ -136,19 +136,21 @@ end
 function lint_file(rootpath, context::LintContext)
     file_content_string = open(io->read(io, String), rootpath, "r")
     ast = CSTParser.parse(file_content_string, true)
+    all_lines = split(file_content_string, "\n")
 
     markers::Dict{Symbol,String} = Dict(:filename => rootpath)
     check_all(ast, markers, context)
 
     lint_rule_reports = []
 
+    # AST rules
     for (offset, x) in collect_lint_report(ast)
         if haserror(x)
             # The next line should be deleted
             lint_rule_report = x.meta.error
             lint_rule_report.offset = offset
 
-            line_number, column, annotation_line = convert_offset_to_line_from_filename(lint_rule_report.offset + 1, lint_rule_report.file)
+            line_number, column, annotation_line = convert_offset_to_line_from_lines(lint_rule_report.offset + 1, all_lines)
             lint_rule_report.line = line_number
             lint_rule_report.column = column
 
@@ -163,15 +165,36 @@ function lint_file(rootpath, context::LintContext)
             end
         end
     end
+
+    for (line_number, line) in enumerate(all_lines)
+        for rule_type in context.rules_to_run
+            if rule_type <: LineLintRule
+                rule = rule_type()
+                (is_error, msg) = check(rule, string(line), markers)
+                if is_error
+                    # We have a violation
+                    lint_rule_report = LintRuleReport(
+                        rule,
+                        msg,
+                        "",
+                        rootpath,
+                        line_number,
+                        1,
+                        false,
+                        0)
+                    push!(lint_rule_reports, lint_rule_report)
+                end
+            end
+        end
+    end
+
     return lint_rule_reports
 end
 
-# Return (index_line, index_column, annotation) for a given offset in a source
-function convert_offset_to_line_from_filename(offset::Union{Int64, Int32}, filename::String)
-    all_lines = open(io->readlines(io), filename)
-    return convert_offset_to_line_from_lines(offset, all_lines)
-end
+get_all_lines_from_filename(filename::String) = open(io->readlines(io), filename)
 
+# Return (index_line, index_column, annotation) for a given offset in a source
+# Useful in tests?
 function convert_offset_to_line(offset::Integer, source::String)
     return convert_offset_to_line_from_lines(offset, split(source, "\n"))
 end
@@ -200,6 +223,7 @@ function annotation_for_this_line(line::AbstractString)
 end
 
 # Return a triple: (line::Int, column::Int, annotation::Option(String))
+# Return (index_line, index_column, annotation) for a given offset in a source
 #
 # `annotation` could be either `nothing`, "lint-disable-line", or
 # `"lint-disable-line: $ERROR_MSG_TO_IGNORE"`
@@ -443,9 +467,12 @@ function run_lint(
     lint_reports = ReLint.lint_file(rootpath, context)
     isempty(lint_reports) || print_header(formatter, io, rootpath)
 
-    is_recommendation(r::LintRuleReport) = r.rule isa RecommendationLintRule
-    is_violation(r::LintRuleReport) = r.rule isa ViolationLintRule
-    is_fatal(r::LintRuleReport) = r.rule isa FatalLintRule
+    is_recommendation(r::LintRuleReport) =
+        r.rule isa RecommendationLintRule || r.rule isa LineRecommendationLintRule
+    is_violation(r::LintRuleReport) =
+        r.rule isa ViolationLintRule || r.rule isa LineViolationLintRule
+    is_fatal(r::LintRuleReport) =
+        r.rule isa FatalLintRule || r.rule isa LineFatalLintRule
 
     violation_reports = filter(is_violation, lint_reports)
     recommandation_reports = filter(is_recommendation, lint_reports)

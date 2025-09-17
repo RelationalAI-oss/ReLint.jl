@@ -24,16 +24,16 @@ struct LintContext
     function LintContext(dts_as_str::Vector{String})
         dt = DataType[]
         for dt_as_str in dts_as_str
-            ind = findfirst(t -> nameof(t) == Symbol(dt_as_str), all_extended_rule_types[])
+            ind = findfirst(t -> nameof(t) == Symbol(dt_as_str), all_rules())
             isnothing(ind) && error("Non-existing rule: $(dt_as_str)")
-            push!(dt, all_extended_rule_types[][ind])
+            push!(dt, all_rules()[ind])
         end
         return new(dt, [])
     end
 
     LintContext(s::Vector{DataType}) = new(s, [])
     LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s) , [])
-    LintContext() = new(all_extended_rule_types[], [])
+    LintContext() = new(all_rules(), [])
     LintContext(a, b) = new(a, b)
 end
 
@@ -94,6 +94,9 @@ function collect_lint_report(x::EXPR, isquoted=false, errs=Tuple{Int,EXPR}[], po
     errs
 end
 
+ast_rules(context::LintContext) = filter(t -> t <: ASTLintRule, context.rules_to_run)
+line_rules(context::LintContext) = filter(t -> t <: LineLintRule, context.rules_to_run)
+
 # TODO: Need to be careful here. We actually need a linked list of markers, and not
 # a dictionary.
 function check_all(
@@ -129,7 +132,7 @@ function check_all(
         markers[:anonymous_function] = "anonymous"
     end
 
-    for T in context.rules_to_run
+    for T in ast_rules(context)
         check_with_process(T, x, markers)
         if haserror(x) && x.meta.error isa LintRuleReport
             lint_rule_report = x.meta.error
@@ -308,10 +311,12 @@ end
 # EXTENDED LINT RULES
 #################################################################################
 abstract type LintRule end
-abstract type RecommendationLintRule <: LintRule end
-abstract type ViolationLintRule <: LintRule end
-abstract type FatalLintRule <: LintRule end
+abstract type ASTLintRule <: LintRule end
+abstract type RecommendationLintRule <: ASTLintRule end
+abstract type ViolationLintRule <: ASTLintRule end
+abstract type FatalLintRule <: ASTLintRule end
 
+# AST rules
 struct AsyncRule <: ViolationLintRule end
 struct CcallRule <: RecommendationLintRule end
 struct InitializingWithFunctionRule <: ViolationLintRule end
@@ -349,14 +354,27 @@ struct NoReturnInAnonymousFunctionRule <: FatalLintRule end
 struct NoImportRule <: ViolationLintRule end
 struct NotImportingRAICodeRule <: ViolationLintRule end
 
+include("text_lint_rules.jl")
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
         InteractiveUtils.subtypes(RecommendationLintRule),
         InteractiveUtils.subtypes(ViolationLintRule),
         InteractiveUtils.subtypes(FatalLintRule),
-        )
+    )
 )
+
+const all_text_lint_rule_types = Ref{Vector{DataType}}(
+    vcat(
+        InteractiveUtils.subtypes(LineRecommendationLintRule),
+        InteractiveUtils.subtypes(LineViolationLintRule),
+        InteractiveUtils.subtypes(LineFatalLintRule),
+    )
+)
+
+function all_rules()
+    return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
+end
 
 # template -> EXPR to be compared
 const check_cache = Dict{String, CSTParser.EXPR}()
@@ -367,7 +385,13 @@ function reset_static_lint_caches()
         InteractiveUtils.subtypes(RecommendationLintRule),
         InteractiveUtils.subtypes(ViolationLintRule),
         InteractiveUtils.subtypes(FatalLintRule),
-        )
+    )
+
+    all_text_lint_rule_types[] = vcat(
+        InteractiveUtils.subtypes(LineRecommendationLintRule),
+        InteractiveUtils.subtypes(LineViolationLintRule),
+        InteractiveUtils.subtypes(LineFatalLintRule),
+    )
     return nothing
 end
 

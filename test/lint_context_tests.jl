@@ -1,5 +1,7 @@
 @testset "Lint context" begin
     using ReLint: LintContext, UseOfStaticThreads, LogStatementsMustBeSafe, UnsafeRule
+    using ReLint: ast_rules, line_rules, all_rules
+    using ReLint: LineLintRule
 
     @testset "Basic" begin
         @test isempty(LintContext(DataType[]).rules_to_run)
@@ -55,5 +57,14 @@
 
             end
         end
+    end
+
+    @testset "AST and Line rules" begin
+        context=LintContext()
+        @test !isempty(context.rules_to_run)
+        @test !isempty(ast_rules(context))
+        @test !isempty(line_rules(context))
+
+        @test !isempty(filter(r->r <: LineLintRule, all_rules()))
     end
 end

@@ -328,7 +328,7 @@ struct SleepRule <: RecommendationLintRule end
 struct InboundsRule <: RecommendationLintRule end
 struct ArrayWithNoTypeRule <: ViolationLintRule end
 struct ThreadsRule <: RecommendationLintRule end
-struct GeneratedRule <: RecommendationLintRule end
+struct GeneratedRule <: FatalLintRule end
 struct SyncRule <: RecommendationLintRule end
 struct RemovePageRule <: ViolationLintRule end
 struct TaskRule <: ViolationLintRule end

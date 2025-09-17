@@ -4,7 +4,7 @@ abstract type LineViolationLintRule <: LineLintRule end
 abstract type LineFatalLintRule <: LineLintRule end
 
 # Line rules
-struct TodoPrRule <: LineViolationLintRule end
+struct TodoPrRule <: LineFatalLintRule end
 
 function check(t::TodoPrRule, line::String, markers::Dict{Symbol,String})
     !isnothing(match(r"TODO\s?\(PR\)", line)) && return true, "`TODO (PR)` found, use `TODO` instead."

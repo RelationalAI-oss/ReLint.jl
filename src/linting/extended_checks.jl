@@ -366,7 +366,9 @@ const all_extended_rule_types = Ref{Vector{DataType}}(
 
 const all_text_lint_rule_types = Ref{Vector{DataType}}(
     vcat(
+        InteractiveUtils.subtypes(LineRecommendationLintRule),
         InteractiveUtils.subtypes(LineViolationLintRule),
+        InteractiveUtils.subtypes(LineFatalLintRule),
     )
 )
 
@@ -386,7 +388,9 @@ function reset_static_lint_caches()
     )
 
     all_text_lint_rule_types[] = vcat(
+        InteractiveUtils.subtypes(LineRecommendationLintRule),
         InteractiveUtils.subtypes(LineViolationLintRule),
+        InteractiveUtils.subtypes(LineFatalLintRule),
     )
     return nothing
 end

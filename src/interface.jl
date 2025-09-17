@@ -166,24 +166,23 @@ function lint_file(rootpath, context::LintContext)
         end
     end
 
+    # Text rules
     for (line_number, line) in enumerate(all_lines)
-        for rule_type in context.rules_to_run
-            if rule_type <: LineLintRule
-                rule = rule_type()
-                (is_error, msg) = check(rule, string(line), markers)
-                if is_error
-                    # We have a violation
-                    lint_rule_report = LintRuleReport(
-                        rule,
-                        msg,
-                        "",
-                        rootpath,
-                        line_number,
-                        1,
-                        false,
-                        0)
-                    push!(lint_rule_reports, lint_rule_report)
-                end
+        for rule_type in line_rules(context)
+            rule = rule_type()
+            (is_error, msg) = check(rule, string(line), markers)
+            if is_error
+                # We have a violation
+                lint_rule_report = LintRuleReport(
+                    rule,
+                    msg,
+                    "",
+                    rootpath,
+                    line_number,
+                    1,
+                    false,
+                    0)
+                push!(lint_rule_reports, lint_rule_report)
             end
         end
     end

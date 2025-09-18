@@ -19,4 +19,5 @@
     @test lint_test("function f()\n @info \"zork\" # TODO PR: fix this\n end",
             "Line 2, column 1: `TODO PR` found, use `TODO` instead.")
 
+    @test !lint_has_error_test("function f()\n # TODO probably okay\n end")
 end

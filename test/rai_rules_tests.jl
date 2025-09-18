@@ -1932,3 +1932,14 @@ end
         """
     @test count_lint_errors(source) == 3
 end
+
+@testset "Printing LintReport" begin
+    using ReLint: LintRuleReport, LintResult, GeneratedRule, print_report, PreCommitFormat,
+        is_fatal
+
+    result = LintResult()
+    lint_report = LintRuleReport(GeneratedRule(), "error")
+    io = IOBuffer()
+    print_report(PreCommitFormat(), io, lint_report, result)
+    @test String(take!(io)) == "Line 0, column 0: error \n"
+end

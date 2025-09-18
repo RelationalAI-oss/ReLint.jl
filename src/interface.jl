@@ -17,6 +17,13 @@ mutable struct LintRuleReport
 end
 LintRuleReport(rule::LintRule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
 
+is_recommendation(r::LintRuleReport) =
+    r.rule isa RecommendationLintRule || r.rule isa LineRecommendationLintRule
+is_violation(r::LintRuleReport) =
+    r.rule isa ViolationLintRule || r.rule isa LineViolationLintRule
+is_fatal(r::LintRuleReport) =
+    r.rule isa FatalLintRule || r.rule isa LineFatalLintRule
+
 # File exclusion
 struct LintFileExclusion
     regex::String
@@ -310,7 +317,7 @@ end
 function print_report(::PreCommitFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
     should_print_report(result) || return
     # Do not print anything if it is not a fatal violation
-    lint_report.rule isa FatalLintRule || return
+    is_fatal(lint_report) || return
     printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color=:green)
     print(io, " ")
     print(io, lint_report.msg)
@@ -465,13 +472,6 @@ function run_lint(
     # We are running Lint on a Julia file
     lint_reports = ReLint.lint_file(rootpath, context)
     isempty(lint_reports) || print_header(formatter, io, rootpath)
-
-    is_recommendation(r::LintRuleReport) =
-        r.rule isa RecommendationLintRule || r.rule isa LineRecommendationLintRule
-    is_violation(r::LintRuleReport) =
-        r.rule isa ViolationLintRule || r.rule isa LineViolationLintRule
-    is_fatal(r::LintRuleReport) =
-        r.rule isa FatalLintRule || r.rule isa LineFatalLintRule
 
     violation_reports = filter(is_violation, lint_reports)
     recommandation_reports = filter(is_recommendation, lint_reports)

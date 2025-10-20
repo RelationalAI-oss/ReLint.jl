@@ -17,12 +17,19 @@ mutable struct LintRuleReport
 end
 LintRuleReport(rule::LintRule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
 
-is_recommendation(r::LintRuleReport) =
-    r.rule isa RecommendationLintRule || r.rule isa LineRecommendationLintRule
-is_violation(r::LintRuleReport) =
-    r.rule isa ViolationLintRule || r.rule isa LineViolationLintRule
-is_fatal(r::LintRuleReport) =
-    r.rule isa FatalLintRule || r.rule isa LineFatalLintRule
+is_recommendation(::T) where T <: RecommendationLintRule = true
+is_recommendation(::T) where T <: LineRecommendationLintRule = true
+is_recommendation(_) = false
+is_violation(::T) where T <: ViolationLintRule = true
+is_violation(::T) where T <: LineViolationLintRule = true
+is_violation(_) = false
+is_fatal(r::T) where T <: FatalLintRule = true
+is_fatal(r::T) where T <: LineFatalLintRule = true
+is_fatal(_) = false
+
+is_recommendation(r::LintRuleReport) = is_recommendation(r.rule)
+is_violation(r::LintRuleReport) = is_violation(r.rule)
+is_fatal(r::LintRuleReport) = is_fatal(r.rule)
 
 # File exclusion
 struct LintFileExclusion
@@ -559,10 +566,11 @@ function print_datadog_report(
     recommandation_count::Integer,
     fatalviolations_count::Integer,
     branch::String,
+    rules_count::Integer,
 )
     event = Dict(
         :source => "ReLint",
-        :specversion => "1.0",
+        :specversion => "1.1",
         :type => "result",
         :time => string(now(UTC)), #Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SSZ"), # RFC3339 format
         :data => Dict(
@@ -572,6 +580,7 @@ function print_datadog_report(
                     :recommandation_count => recommandation_count,
                     :fatalviolations_count => fatalviolations_count,
                     :branch => branch,
+                    :rules_count => rules_count, # Added in specversion 1.1
                     )
     )
     println(json_output, JSON3.write(event))
@@ -729,6 +738,9 @@ function generate_report(
                 println(output_io, "🚨**In total, $(lint_result.fatalviolations_count) fatal rule violation$(s_fvio), $(lint_result.violations_count) rule violation$(s_vio) and $(lint_result.recommendations_count) PR reviewer recommendation$(s_rec) $(is_or_are) found over $(lint_result.files_count) Julia file$(s_fil)**🚨")
             end
         end
+
+
+        println(output_io, "$(length(rules_to_run)) rules were used to build this report")
     end
 
     report_as_string = open(output_filename) do io read(io, String) end
@@ -739,11 +751,11 @@ function generate_report(
         lint_result.violations_count,
         lint_result.recommendations_count,
         lint_result.fatalviolations_count,
-        lint_result.branch,)
+        lint_result.branch,
+        length(rules_to_run),
+    )
 
     # If a json_filename was provided, we are writing the result in json_output.
     # In that case, we need to close the stream at the end.
-    if !isnothing(json_filename)
-        close(json_output)
-    end
+    isnothing(json_filename) || close(json_output)
 end

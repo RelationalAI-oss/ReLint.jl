@@ -1221,8 +1221,8 @@ end
                 lines_count = length(all_lines)
                 @test lines_count < 70
 
-                @test all_lines[end-2] == "⚠️Only a subset of the violations and recommandations are here reported⚠️"
-                @test all_lines[end-1] == "🚨**In total, 0 fatal rule violation, 100 rule violations and 0 PR reviewer recommendation are found over 1 Julia file**🚨"
+                @test all_lines[end-3] == "⚠️Only a subset of the violations and recommandations are here reported⚠️"
+                @test all_lines[end-2] == "🚨**In total, 0 fatal rule violation, 100 rule violations and 0 PR reviewer recommendation are found over 1 Julia file**🚨"
                 @test all_lines[end] == ""
             end
         end

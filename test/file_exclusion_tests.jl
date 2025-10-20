@@ -48,7 +48,7 @@
                     flush(io2)
 
                     re = extract_file_exclusions_from_precommit_file(precommit_full_path)
-                    context = LintContext(ReLint.all_extended_rule_types[], re)
+                    context = LintContext(ReLint.all_rules(), re)
 
                     # Run the linter on the directory
                     str = IOBuffer()

@@ -1,5 +1,16 @@
 @testset "Line rule tests" begin
     @testset "TodoPrRule tests" begin
+        using ReLint: TodoJiraIssueRule, TodoPrRule, SplattingRule
+        using ReLint: is_recommendation, is_violation, is_fatal
+        @test !is_recommendation(TodoPrRule())
+        @test !is_recommendation(TodoJiraIssueRule())
+        @test is_violation(TodoJiraIssueRule())
+        @test is_fatal(TodoPrRule())
+        @test !is_fatal(TodoJiraIssueRule())
+        @test is_recommendation(SplattingRule())
+    end
+
+    @testset "TodoPrRule tests" begin
         using ReLint: LintContext, TodoPrRule
 
         context = LintContext([TodoPrRule])

@@ -158,6 +158,57 @@ Action. When a PR is created, ReLint is run on the files modified in this PR and
 result is posted as a comment.
 Only one report of ReLint is posted in a PR, and it gets updated at each commit.
 
+## Editor Integration
+
+ReLint provides a minimal lsp integration(see [./lsp.jl]) which should permit you
+to integrate it with your editor's lsp client.
+
+To install and precompile packages(which takes some time), navigate to
+the repository root and run:
+```sh
+julia --project -e "using Pkg;Pkg.instantiate()"
+```
+
+Then you can start the lsp client via your editor configuration, not the
+server may still take about 25 seconds to start working.
+
+```sh
+julia --startup-file=no --project=/path/to/ReLint.jl /path/to/ReLint.jl/lsp.jl
+```
+
+### Example configuration
+
+Example configurations (from JETLS.jl)
+
+#### Helix editor
+
+```toml
+# languages.toml
+
+[[language]]
+name = "julia"
+language-servers = [ "relint" ]
+
+[language-server.relint]
+command = "/home/engon/bin/julia"
+args = ["--startup-file=no", "--project=/path/to/ReLint.jl", "/path/to/ReLint.jl/lsp.jl"]
+```
+
+#### Neovim
+
+```julia
+vim.lsp.config("relint", {
+    cmd = {
+        "julia",
+        "--startup-file=no",
+        "--project=/path/to/ReLint.jl",
+        "/path/to/ReLint.jl/lsp.jl",
+    },
+    filetypes = {"julia"},
+})
+vim.lsp.enable("relint")
+```
+
 ## Listing all violations
 
 Currently, ReLint limits the output of the report. In total, the number of reported

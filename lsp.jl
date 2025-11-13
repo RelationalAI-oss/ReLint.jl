@@ -3,6 +3,10 @@ using ReLint
 
 const Range = Dict{Symbol, Dict{Symbol, Int}}
 #                  start/end   line/character
+Range(start::NTuple{2, Int}, stop::NTuple{2, Int}) = Range(
+    :start => Dict(:line => start[1] - 1, :character => start[2] - 1),
+    :end => Dict(:line => stop[1] - 1, :character => stop[2] - 1),
+)
 
 struct Diagnostic
     range::Range
@@ -12,6 +16,7 @@ struct Diagnostic
     code::Union{String, Int, Nothing}
 end
 
+
 function lint_report_to_lsp_diagnostic(report::ReLint.LintRuleReport)::Diagnostic
     severity = ReLint.is_fatal(report) ?
         1 :
@@ -20,15 +25,8 @@ function lint_report_to_lsp_diagnostic(report::ReLint.LintRuleReport)::Diagnosti
         ReLint.is_recommendation(report) ?
         3 : 2
 
-    start_line = report.line - 1
-    start_char = report.column - 1
-    end_line = report.line - 1
-    end_char = report.column - 1 # Should be length of the problematic token
-
-    range = Range(
-        :start => Dict(:line => start_line, :character => start_char),
-        :end => Dict(:line => end_line, :character => end_char)
-    )
+    # TODO: Should be length of the problematic token
+    range = Range((report.line, report.column), (report.line, report.column))
 
     return Diagnostic(
         range,
@@ -66,7 +64,13 @@ function read_lsp_message()::Union{Dict, Nothing}
     return nothing
 end
 function publish_diagnostics(uri::String, text::String, lint_context::ReLint.LintContext)
-    lsp_diagnostics = ReLint.lint_text(text; filename = uri, context = lint_context) .|> lint_report_to_lsp_diagnostic
+    lsp_diagnostics = try
+        ReLint.lint_text(text; filename = uri, context = lint_context) .|> lint_report_to_lsp_diagnostic
+    catch e
+        io = IOBuffer()
+        Base.showerror(io, e)
+        [Diagnostic(Range((1, 1), (1, 1)), 3, String(take!(io)), uri, "ERROR")]
+    end
 
     return send_lsp_message(
         Dict(

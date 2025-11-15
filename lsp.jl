@@ -84,62 +84,68 @@ function publish_diagnostics(uri::String, text::String, lint_context::ReLint.Lin
     )
 end
 
-documents = Dict{String, String}()
-lint_context = ReLint.LintContext()
+JSON3.read("""{"ama": {"ama": 5, "ama": [1, 2, "ama"]}}""")
+JSON3.write(Diagnostic(Range((1, 1), (1, 1)), 3, "ban", "uri", "ERROR"))
 
-println("Starting server")
+function (@main)(_)
+    documents = Dict{String, String}()
+    lint_context = ReLint.LintContext()
 
-while true
-    message = read_lsp_message()
-    isnothing(message) && continue
+    println("Starting server")
 
-    method = get(message, :method, "")
-    params = get(message, :params, Dict())
-    id = get(message, :id, nothing) # Requests have an ID, notifications don't
+    while true
+        message = read_lsp_message()
+        isnothing(message) && continue
 
-    if method == "initialize"
-        capabilities = Dict(
-            :textDocumentSync => Dict(:openClose => true, :change => 1), # 1 for full text sync
-            :capabilities => Dict(
-                :textDocumentSync => Dict(
-                    :openClose => true,
-                    :change => 1 # Full text synchronization
-                ),
-                :diagnosticProvider => Dict(
-                    :interFileDependencies => false,
-                    :workspaceDiagnostics => false
+        method = get(message, :method, "")
+        params = get(message, :params, Dict())
+        id = get(message, :id, nothing) # Requests have an ID, notifications don't
+
+        if method == "initialize"
+            capabilities = Dict(
+                :textDocumentSync => Dict(:openClose => true, :change => 1), # 1 for full text sync
+                :capabilities => Dict(
+                    :textDocumentSync => Dict(
+                        :openClose => true,
+                        :change => 1 # Full text synchronization
+                    ),
+                    :diagnosticProvider => Dict(
+                        :interFileDependencies => false,
+                        :workspaceDiagnostics => false
+                    )
                 )
             )
-        )
-        send_lsp_message(Dict(:jsonrpc => "2.0", :id => id, :result => capabilities))
-    elseif method == "initialized"
-        # good
-    elseif method == "textDocument/didOpen"
-        uri = params[:textDocument][:uri]
-        text = params[:textDocument][:text]
-        documents[uri] = text
-        publish_diagnostics(uri, text, lint_context)
-    elseif method == "textDocument/didChange"
-        uri = params[:textDocument][:uri]
-        # Assuming full text sync (change = 1)
-        text = params[:contentChanges][1][:text]
-        documents[uri] = text
-        publish_diagnostics(uri, text, lint_context)
-    elseif method == "textDocument/didClose"
-        uri = params[:textDocument][:uri]
-        delete!(documents, uri)
-        # Clear diagnostics for the closed file
-        send_lsp_message(
-            Dict(
-                :jsonrpc => "2.0",
-                :method => "textDocument/publishDiagnostics",
-                :params => Dict(
-                    :uri => uri,
-                    :diagnostics => []
+            send_lsp_message(Dict(:jsonrpc => "2.0", :id => id, :result => capabilities))
+        elseif method == "initialized"
+            # good
+        elseif method == "textDocument/didOpen"
+            uri = params[:textDocument][:uri]
+            text = params[:textDocument][:text]
+            documents[uri] = text
+            publish_diagnostics(uri, text, lint_context)
+        elseif method == "textDocument/didChange"
+            uri = params[:textDocument][:uri]
+            # Assuming full text sync (change = 1)
+            text = params[:contentChanges][1][:text]
+            documents[uri] = text
+            publish_diagnostics(uri, text, lint_context)
+        elseif method == "textDocument/didClose"
+            uri = params[:textDocument][:uri]
+            delete!(documents, uri)
+            # Clear diagnostics for the closed file
+            send_lsp_message(
+                Dict(
+                    :jsonrpc => "2.0",
+                    :method => "textDocument/publishDiagnostics",
+                    :params => Dict(
+                        :uri => uri,
+                        :diagnostics => []
+                    )
                 )
             )
-        )
-    elseif method == "exit" || method == "shutdown"
-        break
+        elseif method == "exit" || method == "shutdown"
+            break
+        end
     end
+    return 0
 end

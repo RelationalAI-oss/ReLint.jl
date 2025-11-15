@@ -26,9 +26,8 @@ ReLint.run_lint_on_text("function f() @async 1 + 2 end ");
 ---------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 Line 1, column 14: Use `@spawn` instead of `@async`. /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 1 potential threat is found: 1 violation and 0 recommendation
-----------
-```
 
+```
 Replacing `@async` by `@spawn` make ReLint happy:
 
 ```Julia
@@ -235,4 +234,3 @@ Here is a helper for two common processes when updating Lint rules:
    - If the rule can be run with other (fatal lint) rules, then you should modify the hook `lint-fatal-checks` in the file `.pre-commit-hooks.yaml`, in ReLint.jl
    - Create a new tag of the corresponding ReLint.jl's commit and update `.pre-commit-config.yaml` with this new tag in the client.
    - _If the rule should be run in a pre-commit job_ (in parallel with other pre-commit jobs), then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
-

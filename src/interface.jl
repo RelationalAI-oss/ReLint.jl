@@ -17,14 +17,14 @@ mutable struct LintRuleReport
 end
 LintRuleReport(rule::LintRule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
 
-is_recommendation(::T) where T <: RecommendationLintRule = true
-is_recommendation(::T) where T <: LineRecommendationLintRule = true
+is_recommendation(::T) where {T <: RecommendationLintRule} = true
+is_recommendation(::T) where {T <: LineRecommendationLintRule} = true
 is_recommendation(_) = false
-is_violation(::T) where T <: ViolationLintRule = true
-is_violation(::T) where T <: LineViolationLintRule = true
+is_violation(::T) where {T <: ViolationLintRule} = true
+is_violation(::T) where {T <: LineViolationLintRule} = true
 is_violation(_) = false
-is_fatal(r::T) where T <: FatalLintRule = true
-is_fatal(r::T) where T <: LineFatalLintRule = true
+is_fatal(r::T) where {T <: FatalLintRule} = true
+is_fatal(r::T) where {T <: LineFatalLintRule} = true
 is_fatal(_) = false
 
 is_recommendation(r::LintRuleReport) = is_recommendation(r.rule)
@@ -118,17 +118,17 @@ function Base.append!(l1::LintResult, l2::LintResult)
     Base.append!(l1.linted_files, l2.linted_files)
     Base.append!(l1.lintrule_reports, l2.lintrule_reports)
 
-    l1.printout_count += l2.printout_count
+    return l1.printout_count += l2.printout_count
 end
 
 function Base.:(==)(l1::LintResult, l2::LintResult)
     return l1.files_count == l2.files_count &&
-           l1.violations_count == l2.violations_count &&
-           l1.recommendations_count == l2.recommendations_count &&
-           l1.fatalviolations_count == l2.fatalviolations_count &&
-           l1.linted_files == l2.linted_files &&
-           l1.printout_count == l2.printout_count &&
-           l1.lintrule_reports == l2.lintrule_reports
+        l1.violations_count == l2.violations_count &&
+        l1.recommendations_count == l2.recommendations_count &&
+        l1.fatalviolations_count == l2.fatalviolations_count &&
+        l1.linted_files == l2.linted_files &&
+        l1.printout_count == l2.printout_count &&
+        l1.lintrule_reports == l2.lintrule_reports
 end
 
 function is_already_linted(l::LintResult, filename)
@@ -136,9 +136,9 @@ function is_already_linted(l::LintResult, filename)
 end
 
 function has_values(l::LintResult, a, b, c)
-    return  l.files_count == a &&
-            l.violations_count == b &&
-            l.recommendations_count == c
+    return l.files_count == a &&
+        l.violations_count == b &&
+        l.recommendations_count == c
 end
 
 
@@ -147,12 +147,20 @@ end
 
 
 """
-function lint_file(rootpath, context::LintContext)
-    file_content_string = open(io->read(io, String), rootpath, "r")
+lint_file(rootpath, context::LintContext = LintContext()) =
+    lint_text(read(rootpath, String); context, filename = rootpath)
+
+"""
+    lint_text(file_content_string; filename="<string>", context)
+
+Runs lint checks on `text`, lints will be reported as comming from
+`file`.
+"""
+function lint_text(file_content_string::AbstractString; filename = "<string>", context = LintContext())
     ast = CSTParser.parse(file_content_string, true)
     all_lines = split(file_content_string, "\n")
 
-    markers::Dict{Symbol,String} = Dict(:filename => rootpath)
+    markers::Dict{Symbol, String} = Dict(:filename => filename)
     check_all(ast, markers, context)
 
     lint_rule_reports = []
@@ -191,11 +199,12 @@ function lint_file(rootpath, context::LintContext)
                     rule,
                     msg,
                     "",
-                    rootpath,
+                    filename,
                     line_number,
                     1,
                     false,
-                    0)
+                    0
+                )
                 push!(lint_rule_reports, lint_rule_report)
             end
         end
@@ -203,8 +212,7 @@ function lint_file(rootpath, context::LintContext)
 
     return lint_rule_reports
 end
-
-get_all_lines_from_filename(filename::String) = open(io->readlines(io), filename)
+get_all_lines_from_filename(filename::String) = open(io -> readlines(io), filename)
 
 # Return (index_line, index_column, annotation) for a given offset in a source
 # Useful in tests?
@@ -249,8 +257,8 @@ function convert_offset_to_line_from_lines(offset::Integer, all_lines)
     current_codepoint = 1
     # In these annotations, "" means "lint-disable-line", a nonempty string `s` means
     # "lint_disable_line: $s", and nothing means there's no applicable annotation.
-    prev_annotation::Union{Nothing,SubString} = nothing
-    this_annotation::Union{Nothing,SubString} = nothing
+    prev_annotation::Union{Nothing, SubString} = nothing
+    this_annotation::Union{Nothing, SubString} = nothing
     for (line_number, line) in enumerate(all_lines)
         this_annotation = annotation_for_this_line(line)
         # current_codepoint + sizeof(line) is possibly pointing at the newline that isn't
@@ -272,7 +280,7 @@ function convert_offset_to_line_from_lines(offset::Integer, all_lines)
                 end
             end
             if index_in_line == sizeof(line) + 1
-                return line_number, length(line)+1, annotation
+                return line_number, length(line) + 1, annotation
             else
                 return line_number, length(line, 1, index_in_line), annotation
             end
@@ -303,7 +311,8 @@ struct MarkdownFormat <: AbstractFormatter
         branch::String,
         repo::String,
         prefix::String,
-        stream_workflowcommand::IO) = new(branch, repo, prefix, stream_workflowcommand)
+        stream_workflowcommand::IO
+    ) = new(branch, repo, prefix, stream_workflowcommand)
     MarkdownFormat(branch::String, repo::String) = new(branch, repo, "", devnull)
 end
 
@@ -318,32 +327,32 @@ end
 print_footer(::PreCommitFormat, io::IO) = nothing
 function print_summary(::PreCommitFormat, io::IO, result::LintResult)
     print_summary(PlainFormat(), io, result)
-    printstyled(io, "Note that the list above only show fatal violations\n", color=:red)
+    return printstyled(io, "Note that the list above only show fatal violations\n", color = :red)
 end
 
 function print_report(::PreCommitFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
     should_print_report(result) || return
     # Do not print anything if it is not a fatal violation
     is_fatal(lint_report) || return
-    printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color=:green)
+    printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color = :green)
     print(io, " ")
     print(io, lint_report.msg)
     print(io, " ")
     println(io, lint_report.file)
-    result.printout_count += 1
+    return result.printout_count += 1
 end
 
 should_print_report(result) = result.printout_count <= MAX_REPORTED_ERRORS
 
 function _run_lint_on_dir(
-    rootpath::String;
-    result::LintResult=LintResult(),
-    io::Union{IO,Nothing}=stdout,
-    io_violations::Union{IO,Nothing}=nothing,
-    io_recommendations::Union{IO,Nothing}=nothing,
-    formatter::AbstractFormatter=PlainFormat(),
-    context::LintContext=LintContext()
-)
+        rootpath::String;
+        result::LintResult = LintResult(),
+        io::Union{IO, Nothing} = stdout,
+        io_violations::Union{IO, Nothing} = nothing,
+        io_recommendations::Union{IO, Nothing} = nothing,
+        formatter::AbstractFormatter = PlainFormat(),
+        context::LintContext = LintContext()
+    )
     # Exit if we are in .git
     !isnothing(match(r".*/\.git.*", rootpath)) && return result
 
@@ -365,40 +374,40 @@ function _run_lint_on_dir(
 end
 
 function print_header(::PlainFormat, io::IO, rootpath::String)
-    printstyled(io, "-" ^ 10 * " $(rootpath)\n", color=:blue)
+    return printstyled(io, "-"^10 * " $(rootpath)\n", color = :blue)
 end
 
 function print_report(::PlainFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
     should_print_report(result) || return
-    printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color=:green)
+    printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color = :green)
     print(io, " ")
     print(io, lint_report.msg)
     print(io, " ")
     println(io, lint_report.file)
-    result.printout_count += 1
+    return result.printout_count += 1
 
 end
 
 function print_summary(
-    ::PlainFormat,
-    io::IO,
-    result::LintResult
-)
+        ::PlainFormat,
+        io::IO,
+        result::LintResult
+    )
     nb_rulereports = result.violations_count + result.recommendations_count + result.fatalviolations_count
-    if iszero(nb_rulereports)
-        printstyled(io, "No potential threats were found.\n", color=:green)
+    return if iszero(nb_rulereports)
+        printstyled(io, "No potential threats were found.\n", color = :green)
     else
         plural = nb_rulereports > 1 ? "s are" : " is"
         plural_vio = result.violations_count > 1 ? "s" : ""
         plural_fatal = result.fatalviolations_count > 1 ? "s" : ""
         plural_rec = result.recommendations_count > 1 ? "s" : ""
-        printstyled(io, "$(nb_rulereports) potential threat$(plural) found: ", color=:red)
-        printstyled(io, "$(result.fatalviolations_count) fatal violation$(plural_fatal), $(result.violations_count) violation$(plural_vio) and $(result.recommendations_count) recommendation$(plural_rec)\n", color=:red)
+        printstyled(io, "$(nb_rulereports) potential threat$(plural) found: ", color = :red)
+        printstyled(io, "$(result.fatalviolations_count) fatal violation$(plural_fatal), $(result.violations_count) violation$(plural_vio) and $(result.recommendations_count) recommendation$(plural_rec)\n", color = :red)
     end
 end
 
 function print_footer(::PlainFormat, io::IO)
-    printstyled(io, "-" ^ 10 * "\n\n", color=:blue)
+    return printstyled(io, "-"^10 * "\n\n", color = :blue)
 end
 
 print_header(::MarkdownFormat, io::IO, rootpath::String) = nothing
@@ -409,7 +418,7 @@ print_footer(::MarkdownFormat, io::IO) = nothing
 function remove_prefix_from_filename(file_name::String, file_prefix_to_remove::String)
     corrected_file_name = first(file_name) == '/' ? file_name[2:end] : file_name
     if startswith(corrected_file_name, file_prefix_to_remove)
-        corrected_file_name = corrected_file_name[length(file_prefix_to_remove)+1:end]
+        corrected_file_name = corrected_file_name[(length(file_prefix_to_remove) + 1):end]
     end
     return corrected_file_name
 end
@@ -434,7 +443,7 @@ function print_report(format::MarkdownFormat, io::IO, lint_report::LintRuleRepor
     # Produce workflow command to see results in the PR file changed tab:
     # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#example-setting-an-error-message
     println(format.stream_workflowcommand, "::error file=$(corrected_file_name),line=$(lint_report.line),col=$(lint_report.column)::$(lint_report.msg)")
-    result.printout_count += 1
+    return result.printout_count += 1
 end
 
 print_summary(
@@ -455,14 +464,14 @@ Example of use:
     ReLint.run_lint("foo/bar/myfile.jl")
 """
 function run_lint(
-    rootpath::String;
-    result::LintResult=LintResult(),
-    io::Union{IO,Nothing}=stdout,
-    io_violations::Union{IO,Nothing}=nothing,
-    io_recommendations::Union{IO,Nothing}=nothing,
-    formatter::AbstractFormatter=PlainFormat(),
-    context::LintContext=LintContext()
-)
+        rootpath::String;
+        result::LintResult = LintResult(),
+        io::Union{IO, Nothing} = stdout,
+        io_violations::Union{IO, Nothing} = nothing,
+        io_recommendations::Union{IO, Nothing} = nothing,
+        formatter::AbstractFormatter = PlainFormat(),
+        context::LintContext = LintContext()
+    )
     # If already linted, then we merely exit
     rootpath in result.linted_files && return result
 
@@ -516,13 +525,13 @@ useful to test some rules that depends on the filename.
 `directory` can be "src/Compiler". In that case, the file to be created is "tmp_julia_file.jl"
 """
 function run_lint_on_text(
-    source::String;
-    result::LintResult=LintResult(),
-    io::Union{IO,Nothing}=stdout,
-    formatter::AbstractFormatter=PlainFormat(),
-    directory::String = "",   # temporary directory to be created. If empty, let Julia decide
-    context::LintContext=LintContext()
-)
+        source::String;
+        result::LintResult = LintResult(),
+        io::Union{IO, Nothing} = stdout,
+        formatter::AbstractFormatter = PlainFormat(),
+        directory::String = "",   # temporary directory to be created. If empty, let Julia decide
+        context::LintContext = LintContext()
+    )
     io_violations = IOBuffer()
     io_recommendations = IOBuffer()
     local tmp_file_name, tmp_dir
@@ -548,42 +557,43 @@ function run_lint_on_text(
     print_summary(
         formatter,
         io,
-        result)
+        result
+    )
     print_footer(formatter, io)
 
     # If a directory has been provided, then it needs to be deleted, after manually deleting the file
-    if !isempty(correct_directory)
+    return if !isempty(correct_directory)
         rm(tmp_file_name)
         rm(tmp_dir)
     end
 end
 
 function print_datadog_report(
-    json_output::IO,
-    report_as_string::String,
-    files_count::Integer,
-    violation_count::Integer,
-    recommandation_count::Integer,
-    fatalviolations_count::Integer,
-    branch::String,
-    rules_count::Integer,
-)
+        json_output::IO,
+        report_as_string::String,
+        files_count::Integer,
+        violation_count::Integer,
+        recommandation_count::Integer,
+        fatalviolations_count::Integer,
+        branch::String,
+        rules_count::Integer,
+    )
     event = Dict(
         :source => "ReLint",
         :specversion => "1.1",
         :type => "result",
         :time => string(now(UTC)), #Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SSZ"), # RFC3339 format
         :data => Dict(
-                    :report_as_string=>report_as_string,
-                    :files_count => files_count,
-                    :violation_count => violation_count,
-                    :recommandation_count => recommandation_count,
-                    :fatalviolations_count => fatalviolations_count,
-                    :branch => branch,
-                    :rules_count => rules_count, # Added in specversion 1.1
-                    )
+            :report_as_string => report_as_string,
+            :files_count => files_count,
+            :violation_count => violation_count,
+            :recommandation_count => recommandation_count,
+            :fatalviolations_count => fatalviolations_count,
+            :branch => branch,
+            :rules_count => rules_count, # Added in specversion 1.1
+        )
     )
-    println(json_output, JSON3.write(event))
+    return println(json_output, JSON3.write(event))
 end
 
 """
@@ -621,19 +631,19 @@ When provided, `github_repository` and `branch_name` are used to have clickable 
 the Markdown report.
 """
 function generate_report(
-    filenames::Vector{String},
-    output_filename::String
-    ;
-    json_output::IO=stdout,
-    json_filename::Union{Nothing,String}=nothing,  # Override `json_output` when not nothing
-    github_repository::String="",
-    branch_name::String="",
-    file_prefix_to_remove::String="",
-    analyze_all_file_found_locally::Bool=false,
-    stream_workflowcommand::IO=stdout,
-    rules_to_run::Vector{DataType}=all_extended_rule_types[],
-    pre_commit_file::String="",
-)
+        filenames::Vector{String},
+        output_filename::String
+        ;
+        json_output::IO = stdout,
+        json_filename::Union{Nothing, String} = nothing,  # Override `json_output` when not nothing
+        github_repository::String = "",
+        branch_name::String = "",
+        file_prefix_to_remove::String = "",
+        analyze_all_file_found_locally::Bool = false,
+        stream_workflowcommand::IO = stdout,
+        rules_to_run::Vector{DataType} = all_extended_rule_types[],
+        pre_commit_file::String = "",
+    )
     if isfile(output_filename)
         @error "File $(output_filename) exist already."
         return
@@ -648,7 +658,7 @@ function generate_report(
     end
 
     local errors_count = 0
-    local julia_filenames = filter(n->endswith(n, ".jl"), filenames)
+    local julia_filenames = filter(n -> endswith(n, ".jl"), filenames)
 
     # Result of the whole analysis
     lint_result = LintResult()
@@ -669,12 +679,12 @@ function generate_report(
             Report creation time (UTC): ($(now(UTC)))")
 
 
-        formatter=MarkdownFormat(
+        formatter = MarkdownFormat(
             branch_name,
             github_repository,
             file_prefix_to_remove,
             stream_workflowcommand,
-            )
+        )
 
         io_violations = IOBuffer()
         io_recommendations = IOBuffer()
@@ -683,7 +693,8 @@ function generate_report(
         if !isempty(pre_commit_file)
             context = LintContext(
                 rules_to_run,
-                extract_file_exclusions_from_precommit_file(pre_commit_file))
+                extract_file_exclusions_from_precommit_file(pre_commit_file)
+            )
         else
             context = LintContext(rules_to_run)
         end
@@ -705,13 +716,15 @@ function generate_report(
         recommendations = String(take!(io_recommendations))
         if !isempty(recommendations)
             println(output_io, "\n")
-            println(output_io, """
-                                <details>
-                                <summary>For PR Reviewer ($(lint_result.recommendations_count))</summary>
+            println(
+                output_io, """
+                <details>
+                <summary>For PR Reviewer ($(lint_result.recommendations_count))</summary>
 
-                                $(recommendations)
-                                </details>
-                                """)
+                $(recommendations)
+                </details>
+                """
+            )
         end
 
         has_julia_file = !isempty(lint_result.linted_files)
@@ -725,8 +738,8 @@ function generate_report(
             println(output_io, "No Julia file is modified or added in this PR.")
         else
             errors_count = lint_result.violations_count +
-                            lint_result.recommendations_count +
-                            lint_result.fatalviolations_count
+                lint_result.recommendations_count +
+                lint_result.fatalviolations_count
             if iszero(errors_count)
                 print(output_io, "🎉No potential threats are found over $(length(julia_filenames)) Julia file$(ending).👍\n\n")
             else
@@ -743,7 +756,9 @@ function generate_report(
         println(output_io, "$(length(rules_to_run)) rules were used to build this report")
     end
 
-    report_as_string = open(output_filename) do io read(io, String) end
+    report_as_string = open(output_filename) do io
+        read(io, String)
+    end
     print_datadog_report(
         json_output,
         report_as_string,
@@ -757,5 +772,5 @@ function generate_report(
 
     # If a json_filename was provided, we are writing the result in json_output.
     # In that case, we need to close the stream at the end.
-    isnothing(json_filename) || close(json_output)
+    return isnothing(json_filename) || close(json_output)
 end

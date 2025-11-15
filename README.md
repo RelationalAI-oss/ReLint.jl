@@ -26,9 +26,8 @@ ReLint.run_lint_on_text("function f() @async 1 + 2 end ");
 ---------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 Line 1, column 14: Use `@spawn` instead of `@async`. /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 1 potential threat is found: 1 violation and 0 recommendation
-----------
-```
 
+```
 Replacing `@async` by `@spawn` make ReLint happy:
 
 ```Julia
@@ -158,6 +157,57 @@ Action. When a PR is created, ReLint is run on the files modified in this PR and
 result is posted as a comment.
 Only one report of ReLint is posted in a PR, and it gets updated at each commit.
 
+## Editor Integration
+
+ReLint provides a minimal lsp integration(see [./lsp.jl]) which should permit you
+to integrate it with your editor's lsp client.
+
+To install and precompile packages(which takes some time), navigate to
+the repository root and run:
+```sh
+julia --project -e "using Pkg;Pkg.instantiate()"
+```
+
+Then you can start the lsp client via your editor configuration, not the
+server may still take about 25 seconds to start working.
+
+```sh
+julia --startup-file=no --project=/path/to/ReLint.jl /path/to/ReLint.jl/lsp.jl
+```
+
+### Example configuration
+
+Example configurations (from JETLS.jl)
+
+#### Helix editor
+
+```toml
+# languages.toml
+
+[[language]]
+name = "julia"
+language-servers = [ "relint" ]
+
+[language-server.relint]
+command = "/home/engon/bin/julia"
+args = ["--startup-file=no", "--project=/path/to/ReLint.jl", "/path/to/ReLint.jl/lsp.jl"]
+```
+
+#### Neovim
+
+```julia
+vim.lsp.config("relint", {
+    cmd = {
+        "julia",
+        "--startup-file=no",
+        "--project=/path/to/ReLint.jl",
+        "/path/to/ReLint.jl/lsp.jl",
+    },
+    filetypes = {"julia"},
+})
+vim.lsp.enable("relint")
+```
+
 ## Listing all violations
 
 Currently, ReLint limits the output of the report. In total, the number of reported
@@ -184,4 +234,3 @@ Here is a helper for two common processes when updating Lint rules:
    - If the rule can be run with other (fatal lint) rules, then you should modify the hook `lint-fatal-checks` in the file `.pre-commit-hooks.yaml`, in ReLint.jl
    - Create a new tag of the corresponding ReLint.jl's commit and update `.pre-commit-config.yaml` with this new tag in the client.
    - _If the rule should be run in a pre-commit job_ (in parallel with other pre-commit jobs), then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
-

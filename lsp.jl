@@ -84,8 +84,21 @@ function publish_diagnostics(uri::String, text::String, lint_context::ReLint.Lin
     )
 end
 
+# some precompile workload
 JSON3.read("""{"ama": {"ama": 5, "ama": [1, 2, "ama"]}}""")
 JSON3.write(Diagnostic(Range((1, 1), (1, 1)), 3, "ban", "uri", "ERROR"))
+"""
+Hello = world
+function a(c::Function)
+    @async c() do
+        if c > 0
+            return c
+        else if c > 0
+            return a -> c() + a
+        end
+    end
+end
+""" |> ReLint.lint_text
 
 function (@main)(_)
     documents = Dict{String, String}()

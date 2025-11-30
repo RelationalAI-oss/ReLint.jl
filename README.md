@@ -164,22 +164,35 @@ to integrate it with your editor's lsp client.
 
 To install and precompile packages(which takes some time), navigate to
 the repository root and run:
-```sh
+```fish
 julia --project -e "using Pkg;Pkg.instantiate()"
 ```
 
 Then you can start the lsp client via your editor configuration, not the
 server may still take about 25 seconds to start working.
 
-```sh
+```fish
 julia --startup-file=no --project=/path/to/ReLint.jl /path/to/ReLint.jl/lsp.jl
 ```
 
-### Example configuration
+To reduce startup time and use with editors, you may also compile lsp.jl with
+`JuliaC.jl` by running one of these commands at the repository root
+and use the output instead.
 
-Example configurations (from JETLS.jl)
+```fish
+# Using juliac app
+juliac --project=. --output-exe lsp --bundle build lsp.jl
+# OR with the module module
+julia --project -e 'using Pkg;Pkg.add("JuliaC");using JuliaC; JuliaC.main(ARGS)' -- \
+    --output-exe lsp --bundle build lsp.jl
+```
 
-#### Helix editor
+This should create a relocatable `build` folder at the repository root,
+with the executable being at `build/bin/lsp`.
+
+### Editor configuration
+
+#### Helix 
 
 ```toml
 # languages.toml
@@ -189,23 +202,34 @@ name = "julia"
 language-servers = [ "relint" ]
 
 [language-server.relint]
-command = "/home/engon/bin/julia"
-args = ["--startup-file=no", "--project=/path/to/ReLint.jl", "/path/to/ReLint.jl/lsp.jl"]
+command = "/path/to/Relint.jl/build/bin/lsp"
 ```
 
 #### Neovim
 
 ```julia
 vim.lsp.config("relint", {
-    cmd = {
-        "julia",
-        "--startup-file=no",
-        "--project=/path/to/ReLint.jl",
-        "/path/to/ReLint.jl/lsp.jl",
-    },
+    cmd = {"/path/to/Relint.jl/build/bin/lsp",},
     filetypes = {"julia"},
 })
 vim.lsp.enable("relint")
+```
+
+#### emacs 30 .emacs configuration (julia-mode + eglot)
+
+emacs 30 includes eglot which provides basic lsp server functionality.
+
+The following configuration should work with both
+[julia-repl](https://github.com/tpapp/julia-repl) and
+[julia-snail](https://github.com/gcv/julia-snail) since they both rely on
+julia-mode:
+
+```emacs
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(julia-mode . ("/path/to/ReLint.jl/build/bin/lsp"))))
+
+(add-hook 'julia-mode-hook 'eglot-ensure)
 ```
 
 ## Listing all violations

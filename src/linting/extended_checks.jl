@@ -353,6 +353,11 @@ struct NoinlineAndLiteralRule <: FatalLintRule end
 struct NoReturnInAnonymousFunctionRule <: FatalLintRule end
 struct NoImportRule <: ViolationLintRule end
 struct NotImportingRAICodeRule <: ViolationLintRule end
+struct BareUsingRule <: ViolationLintRule end
+struct UntypedArrayComprehensionRule <: ViolationLintRule end
+struct ReturnTypeAnnotationRule <: RecommendationLintRule end
+struct StringConcatenationRule <: RecommendationLintRule end
+struct NoGlobalVariablesRule <: RecommendationLintRule end
 
 include("text_lint_rules.jl")
 
@@ -841,4 +846,72 @@ function check(t::NotImportingRAICodeRule, x::EXPR, markers::Dict{Symbol,String}
         u = "using RAICode : $(s)"
         generic_check(t, x, u, msg)
     end
+end
+
+function check(t::BareUsingRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files - bare using is allowed in tests
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#module-imports)."
+    generic_check(t, x, "using hole_variable", msg)
+end
+
+function check(t::UntypedArrayComprehensionRule, x::EXPR, markers::Dict{Symbol,String})
+    # Only check in Compiler directory - this is where type stability matters most
+    if haskey(markers, :filename)
+        !contains(markers[:filename], "src/Compiler/") && return
+    end
+
+    msg = "Need a specific Array type to be provided. Use `T[x for x in xs]` instead of `[x for x in xs]`. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
+
+    # Pattern: [comprehension] without type prefix
+    # This catches [x for x in xs] but not T[x for x in xs]
+    generic_check(t, x, "[hole_variable for hole_variable in hole_variable]", msg)
+end
+
+function check(t::ReturnTypeAnnotationRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
+
+    # Pattern: function name()::Type ... end (multiline)
+    generic_check(t, x, "function hole_variable(hole_variable_star)::hole_variable hole_variable_star end", msg)
+
+    # Pattern: name()::Type = ... (one-liner)
+    generic_check(t, x, "hole_variable(hole_variable_star)::hole_variable = hole_variable", msg)
+end
+
+function check(t::StringConcatenationRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Prefer string interpolation or `string()` over `*` for string concatenation. Use `\"\$(a)\$(b)\"` instead of `a * b`. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#strings)."
+
+    # Pattern: "string" * something or something * "string"
+    generic_check(t, x, "\"LINT_STRING\" * hole_variable", msg)
+    generic_check(t, x, "hole_variable * \"LINT_STRING\"", msg)
+end
+
+function check(t::NoGlobalVariablesRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Avoid non-const global variables. Use `const` for immutable globals or pass values as function arguments. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#global-variables)."
+
+    # Pattern: global variable assignment without const
+    # Matches: x = value, global x = value
+    generic_check(t, x, "global hole_variable = hole_variable", msg)
 end

@@ -26,9 +26,8 @@ ReLint.run_lint_on_text("function f() @async 1 + 2 end ");
 ---------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 Line 1, column 14: Use `@spawn` instead of `@async`. /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
 1 potential threat is found: 1 violation and 0 recommendation
-----------
-```
 
+```
 Replacing `@async` by `@spawn` make ReLint happy:
 
 ```Julia
@@ -158,6 +157,81 @@ Action. When a PR is created, ReLint is run on the files modified in this PR and
 result is posted as a comment.
 Only one report of ReLint is posted in a PR, and it gets updated at each commit.
 
+## Editor Integration
+
+ReLint provides a minimal lsp integration(see [./lsp.jl]) which should permit you
+to integrate it with your editor's lsp client.
+
+To install and precompile packages(which takes some time), navigate to
+the repository root and run:
+```fish
+julia --project -e "using Pkg;Pkg.instantiate()"
+```
+
+Then you can start the lsp client via your editor configuration, not the
+server may still take about 25 seconds to start working.
+
+```fish
+julia --startup-file=no --project=/path/to/ReLint.jl /path/to/ReLint.jl/lsp.jl
+```
+
+To reduce startup time and use with editors, you may also compile lsp.jl with
+`JuliaC.jl` by running one of these commands at the repository root
+and use the output instead.
+
+```fish
+# Using juliac app
+juliac --project=. --output-exe lsp --bundle build lsp.jl
+# OR with the module module
+julia --project -e 'using Pkg;Pkg.add("JuliaC");using JuliaC; JuliaC.main(ARGS)' -- \
+    --output-exe lsp --bundle build lsp.jl
+```
+
+This should create a relocatable `build` folder at the repository root,
+with the executable being at `build/bin/lsp`.
+
+### Editor configuration
+
+#### Helix 
+
+```toml
+# languages.toml
+
+[[language]]
+name = "julia"
+language-servers = [ "relint" ]
+
+[language-server.relint]
+command = "/path/to/Relint.jl/build/bin/lsp"
+```
+
+#### Neovim
+
+```julia
+vim.lsp.config("relint", {
+    cmd = {"/path/to/Relint.jl/build/bin/lsp",},
+    filetypes = {"julia"},
+})
+vim.lsp.enable("relint")
+```
+
+#### emacs 30 .emacs configuration (julia-mode + eglot)
+
+emacs 30 includes eglot which provides basic lsp server functionality.
+
+The following configuration should work with both
+[julia-repl](https://github.com/tpapp/julia-repl) and
+[julia-snail](https://github.com/gcv/julia-snail) since they both rely on
+julia-mode:
+
+```emacs
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(julia-mode . ("/path/to/ReLint.jl/build/bin/lsp"))))
+
+(add-hook 'julia-mode-hook 'eglot-ensure)
+```
+
 ## Listing all violations
 
 Currently, ReLint limits the output of the report. In total, the number of reported
@@ -184,4 +258,3 @@ Here is a helper for two common processes when updating Lint rules:
    - If the rule can be run with other (fatal lint) rules, then you should modify the hook `lint-fatal-checks` in the file `.pre-commit-hooks.yaml`, in ReLint.jl
    - Create a new tag of the corresponding ReLint.jl's commit and update `.pre-commit-config.yaml` with this new tag in the client.
    - _If the rule should be run in a pre-commit job_ (in parallel with other pre-commit jobs), then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
-

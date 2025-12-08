@@ -1933,6 +1933,262 @@ end
     @test count_lint_errors(source) == 3
 end
 
+@testset "Forbid bare using" begin
+    @testset "bare using 01" begin
+        source = """
+            using LinearAlgebra
+            """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 1, column 1: Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.")
+    end
+
+    @testset "bare using 02" begin
+        source = """
+            using Statistics
+            using LinearAlgebra
+            """
+        @test count_lint_errors(source) == 2
+        @test lint_test(source,
+            "Line 1, column 1: Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.")
+        @test lint_test(source,
+            "Line 2, column 1: Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.")
+    end
+
+    @testset "explicit import with module name allowed" begin
+        source = """
+            using LinearAlgebra: LinearAlgebra
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "explicit import with function names allowed" begin
+        source = """
+            using Statistics: mean, std
+            using LinearAlgebra: norm, dot
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "mixed bare and explicit using" begin
+        source = """
+            using LinearAlgebra
+            using Statistics: mean, std
+            using Base: show
+            """
+        @test count_lint_errors(source) == 1
+        @test lint_test(source,
+            "Line 1, column 1: Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.")
+    end
+
+    @testset "bare using in test file is allowed" begin
+        source = """
+            using Test
+            using LinearAlgebra
+            """
+        # Note: This will only pass when running on a file with "test" in the path
+        # In this test context, the markers[:filename] won't have "test/" so it will error
+        @test lint_has_error_test(source)
+    end
+end
+
+@testset "Untyped array comprehensions" begin
+    @testset "untyped comprehension in Compiler" begin
+        source = """
+            function f()
+                x = [i for i in 1:10]
+                return x
+            end
+            """
+        @test lint_test(source,
+            "Line 2, column 9: Need a specific Array type to be provided.";
+            directory = "src/Compiler/")
+    end
+
+    @testset "typed comprehension allowed" begin
+        source = """
+            function f()
+                x = Int[i for i in 1:10]
+                return x
+            end
+            """
+        @test count_lint_errors(source; directory = "src/Compiler/") == 0
+    end
+
+    @testset "untyped comprehension outside Compiler is ok" begin
+        source = """
+            function f()
+                x = [i for i in 1:10]
+                return x
+            end
+            """
+        @test count_lint_errors(source; directory = "src/Other/") == 0
+    end
+
+    @testset "multiple comprehensions mixed" begin
+        source = """
+            function f()
+                x = [i for i in 1:10]
+                y = String[string(i) for i in 1:10]
+                return (x, y)
+            end
+            """
+        @test count_lint_errors(source; directory = "src/Compiler/") == 1
+        @test lint_test(source,
+            "Line 2, column 9: Need a specific Array type to be provided.";
+            directory = "src/Compiler/")
+    end
+end
+
+@testset "Return type annotations" begin
+    @testset "function with return type annotation" begin
+        source = """
+            function foo(x::Int)::String
+                return string(x)
+            end
+            """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 1, column 1: Avoid return type annotations")
+    end
+
+    @testset "function without return type annotation is ok" begin
+        source = """
+            function foo(x::Int)
+                return string(x)
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "multiple functions with annotations" begin
+        source = """
+            function foo(x::Int)::String
+                return string(x)
+            end
+
+            function bar(y::Float64)::Int
+                return round(Int, y)
+            end
+
+            function baz(z)
+                return z + 1
+            end
+            """
+        @test count_lint_errors(source) == 2
+        @test lint_test(source,
+            "Line 1, column 1: Avoid return type annotations")
+        @test lint_test(source,
+            "Line 5, column 1: Avoid return type annotations")
+    end
+
+    @testset "one-liner with return type" begin
+        source = """
+            foo(x::Int)::String = string(x)
+            """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 1, column 1: Avoid return type annotations")
+    end
+end
+
+@testset "String concatenation with *" begin
+    @testset "string literal concatenation" begin
+        source = """
+            function f()
+                x = "hello" * " world"
+                return x
+            end
+            """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 2, column 9: Prefer string interpolation")
+    end
+
+    @testset "variable concatenation with string" begin
+        source = """
+            function f(name)
+                msg = "Hello " * name
+                return msg
+            end
+            """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 2, column 11: Prefer string interpolation")
+    end
+
+    @testset "string interpolation is ok" begin
+        source = raw"""
+            function f(name)
+                msg = "Hello $(name)"
+                return msg
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "string() function is ok" begin
+        source = """
+            function f(x, y)
+                msg = string(x, y)
+                return msg
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "numeric multiplication is ok" begin
+        source = """
+            function f()
+                x = 2 * 3
+                return x
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
+end
+
+@testset "No global variables" begin
+    @testset "global variable assignment" begin
+        source = """
+            global counter = 0
+            """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 1, column 1: Avoid non-const global variables")
+    end
+
+    @testset "const global is ok" begin
+        source = """
+            const MAX_SIZE = 100
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "global in function is ok" begin
+        source = """
+            function f()
+                x = 10
+                return x
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "multiple global assignments" begin
+        source = """
+            global x = 1
+            global y = 2
+            const z = 3
+            """
+        @test count_lint_errors(source) == 2
+        @test lint_test(source,
+            "Line 1, column 1: Avoid non-const global variables")
+        @test lint_test(source,
+            "Line 2, column 1: Avoid non-const global variables")
+    end
+end
+
 @testset "Printing LintReport" begin
     using ReLint: LintRuleReport, LintResult, GeneratedRule, print_report, PreCommitFormat,
         is_fatal

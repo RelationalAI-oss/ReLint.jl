@@ -132,6 +132,11 @@ function check_all(
         markers[:anonymous_function] = "anonymous"
     end
 
+    # Track loop context for NotFullyParameterizedConstructorRule
+    if headof(x) === :for || headof(x) === :while
+        markers[:in_loop] = "true"
+    end
+
     for T in ast_rules(context)
         check_with_process(T, x, markers)
         if haserror(x) && x.meta.error isa LintRuleReport
@@ -159,6 +164,7 @@ function check_all(
         x.head.val == "->" &&
         delete!(markers, :anonymous_function)
     headof(x) === :do && delete!(markers, :anonymous_function)
+    (headof(x) === :for || headof(x) === :while) && delete!(markers, :in_loop)
 end
 
 
@@ -353,6 +359,16 @@ struct NoinlineAndLiteralRule <: FatalLintRule end
 struct NoReturnInAnonymousFunctionRule <: FatalLintRule end
 struct NoImportRule <: ViolationLintRule end
 struct NotImportingRAICodeRule <: ViolationLintRule end
+struct BareUsingRule <: ViolationLintRule end
+struct UntypedArrayComprehensionRule <: ViolationLintRule end
+struct ReturnTypeAnnotationRule <: RecommendationLintRule end
+struct StringConcatenationRule <: RecommendationLintRule end
+struct NoGlobalVariablesRule <: RecommendationLintRule end
+struct ConstGlobalMissingTypeRule <: ViolationLintRule end
+struct IsNothingPerformanceRule <: RecommendationLintRule end
+struct MissingAutoHashEqualsRule <: RecommendationLintRule end
+struct NotFullyParameterizedConstructorRule <: ViolationLintRule end
+struct ClosureCaptureByValueRule <: RecommendationLintRule end
 
 include("text_lint_rules.jl")
 
@@ -840,5 +856,255 @@ function check(t::NotImportingRAICodeRule, x::EXPR, markers::Dict{Symbol,String}
         s = join(["hole_variable" for _ in 1:i], ", ")
         u = "using RAICode : $(s)"
         generic_check(t, x, u, msg)
+    end
+end
+
+function check(t::BareUsingRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files - bare using is allowed in tests
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#module-imports)."
+    generic_check(t, x, "using hole_variable", msg)
+end
+
+function check(t::UntypedArrayComprehensionRule, x::EXPR, markers::Dict{Symbol,String})
+    # Only check in Compiler directory - this is where type stability matters most
+    if haskey(markers, :filename)
+        !contains(markers[:filename], "src/Compiler/") && return
+    end
+
+    msg = "Need a specific Array type to be provided. Use `T[x for x in xs]` instead of `[x for x in xs]`. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
+
+    # Pattern: [comprehension] without type prefix
+    # This catches [x for x in xs] but not T[x for x in xs]
+    generic_check(t, x, "[hole_variable for hole_variable in hole_variable]", msg)
+end
+
+function check(t::ReturnTypeAnnotationRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
+
+    # Pattern: function name()::Type ... end (multiline)
+    generic_check(t, x, "function hole_variable(hole_variable_star)::hole_variable hole_variable_star end", msg)
+
+    # Pattern: name()::Type = ... (one-liner)
+    generic_check(t, x, "hole_variable(hole_variable_star)::hole_variable = hole_variable", msg)
+end
+
+function check(t::StringConcatenationRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Prefer string interpolation or `string()` over `*` for string concatenation. Use `\"\$(a)\$(b)\"` instead of `a * b`. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#strings)."
+
+    # Pattern: "string" * something or something * "string"
+    generic_check(t, x, "\"LINT_STRING\" * hole_variable", msg)
+    generic_check(t, x, "hole_variable * \"LINT_STRING\"", msg)
+end
+
+function check(t::NoGlobalVariablesRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "Avoid non-const global variables. Use `const` for immutable globals or pass values as function arguments. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#global-variables)."
+
+    # Pattern: global variable assignment without const
+    # Matches: x = value, global x = value
+    generic_check(t, x, "global hole_variable = hole_variable", msg)
+end
+
+function check(t::ConstGlobalMissingTypeRule, x::EXPR, markers::Dict{Symbol,String})
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    # Detect global assignments
+    # AST structure from debug: global keyword followed by assignment
+    # global untyped = val: x[1] = GLOBAL, x[2] = (= IDENTIFIER val)
+    # global typed::T = val: x[1] = GLOBAL, x[2] = (= (:: IDENTIFIER T) val)
+    if headof(x) === :global && length(x) >= 2
+        # Skip the GLOBAL keyword (x[1]), look at the assignment (x[2])
+        assignment = x[2]
+
+        # Check if this is an assignment (headof contains "=")
+        head_str = string(headof(assignment))
+        if contains(head_str, "=") && length(assignment) >= 1
+            lhs = assignment[1]  # Left-hand side of assignment
+
+            # Check if lhs is just an identifier (no type annotation)
+            # If headof(lhs) === :IDENTIFIER, it's untyped
+            # If headof(lhs) contains "::", it's typed
+            if headof(lhs) === :IDENTIFIER
+                # This is an untyped global like: global x = value
+                msg = "Global variable must have type annotation: `global x::Type = value`. Use `const` for immutable globals. [Explanation](https://github.com/RelationalAI/RAIStyle#global-variables)"
+                seterror!(x, LintRuleReport(t, msg))
+            end
+            # If headof(lhs) contains "::", it's typed - OK, don't error
+        end
+    end
+end
+
+function check(t::IsNothingPerformanceRule, x::EXPR, markers::Dict{Symbol,String})
+    # Only check in performance-critical directories
+    if haskey(markers, :filename)
+        performance_critical = contains(markers[:filename], "src/Compiler/") ||
+                             contains(markers[:filename], "packages/Salsa/")
+        !performance_critical && return
+    else
+        return
+    end
+
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    msg = "In performance-critical code, prefer `x === nothing` or `x isa Nothing` over `isnothing(x)`. [Explanation](https://github.com/RelationalAI/RAIStyle#isnothing-vs-isa-nothing-vs--nothing)"
+
+    generic_check(t, x, "isnothing(hole_variable)", msg)
+end
+
+function check(t::MissingAutoHashEqualsRule, x::EXPR, markers::Dict{Symbol,String})
+    # Only check struct definitions
+    if headof(x) !== :struct
+        return
+    end
+
+    # Skip test files - testing often uses simple structs without equality
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    # Get the struct name
+    struct_name = fetch_value(x, :IDENTIFIER)
+    isnothing(struct_name) && return
+
+    # Skip private structs (start with underscore)
+    startswith(struct_name, "_") && return
+
+    # Check if there's an @auto_hash_equals macro before this struct
+    # This is a simplified check - in practice, we'd need to track macros in markers
+    # For now, emit a recommendation for all non-private structs
+
+    msg = "Consider using `@auto_hash_equals` for struct `$(struct_name)` if it will be used as a dictionary key or set member. Skip this if the struct is a bits type or requires custom equality. [Explanation](https://github.com/RelationalAI/RAIStyle#struct-equality)"
+
+    # This is a recommendation, not a hard error, so we'll be conservative
+    # Only warn for non-bits types (though detecting bits types requires more analysis)
+    seterror!(x, LintRuleReport(t, msg))
+end
+
+function check(t::NotFullyParameterizedConstructorRule, x::EXPR, markers::Dict{Symbol,String})
+    # Only check in performance-critical code
+    if haskey(markers, :filename)
+        !contains(markers[:filename], "src/Compiler/") && return
+    else
+        return
+    end
+
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    # Check if we're in a loop
+    if !haskey(markers, :in_loop)
+        return
+    end
+
+    # Detect constructor calls (capitalized function names)
+    if headof(x) === :call
+        # Get the function being called
+        func_expr = x[1]
+
+        # Extract function name from different patterns
+        func_name = nothing
+        if headof(func_expr) === :IDENTIFIER
+            func_name = valof(func_expr)
+        elseif headof(func_expr) === :curly
+            # Fully parameterized like Vector{Int}(...) - this is OK
+            return
+        end
+
+        # If we have a function name and it starts with capital letter (constructor pattern)
+        if !isnothing(func_name) && occursin(r"^[A-Z]", func_name)
+            # This is likely a not-fully-parameterized constructor call in a loop
+            msg = "Avoid not-fully-parameterized constructor `$(func_name)(...)` in loops. Use a maker function instead for better performance. [Explanation](https://github.com/RelationalAI/RAIStyle#super-costly-dynamic-dispatches)"
+            seterror!(x, LintRuleReport(t, msg))
+        end
+    end
+end
+
+function check(t::ClosureCaptureByValueRule, x::EXPR, markers::Dict{Symbol,String})
+    # Only check in performance-critical directories
+    if haskey(markers, :filename)
+        !contains(markers[:filename], "src/Compiler/") && return
+    else
+        return
+    end
+
+    # Skip test files
+    if haskey(markers, :filename)
+        contains(markers[:filename], "test/") && return
+        contains(markers[:filename], "test.jl") && return
+    end
+
+    # Detect nested function definitions (closures)
+    # We want to find function definitions that occur INSIDE other functions
+    # Pattern 1: Lambda function: f = x -> ...
+    # Pattern 2: Short-form function: f() = ...
+    # Pattern 3: Anonymous functions are marked separately
+    # Note: Full function definitions (function f() end) are problematic because
+    # the :function marker is set BEFORE checking, so we can't distinguish top-level
+    # from nested just by checking the marker. Skip those for now.
+
+    is_nested_function = false
+
+    # Only check if we're inside a function
+    if !haskey(markers, :function)
+        return
+    end
+
+    if headof(x) === :(=)
+        # Check for anonymous function assignment: f = x -> ...
+        # or short form function: f() = ...
+        if length(x) >= 2
+            rhs = x[2]
+            if headof(rhs) === :(->)
+                # Lambda function - definitely a closure
+                is_nested_function = true
+            elseif headof(x[1]) === :call
+                # Short form function definition - definitely nested
+                is_nested_function = true
+            end
+        end
+    elseif haskey(markers, :anonymous_function)
+        # Anonymous functions (do blocks, etc.) - these are closures
+        is_nested_function = true
+    end
+
+    if is_nested_function
+        # We found a nested function - recommend considering let-binding
+        # Note: This is a recommendation, not an error, as capture-by-reference is sometimes correct
+        msg = "Nested function may capture variables by reference, causing boxing and type instability. Consider using `let x = x` to capture by value for better performance. [Explanation](https://github.com/RelationalAI/RAIStyle#closure-capture-performance)"
+        seterror!(x, LintRuleReport(t, msg))
     end
 end

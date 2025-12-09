@@ -2155,7 +2155,7 @@ end
             """
         @test lint_has_error_test(source)
         @test lint_test(source,
-            "Line 1, column 1: Avoid non-const global variables")
+            "Global variable must have type annotation")
     end
 
     @testset "const global is ok" begin
@@ -2183,9 +2183,9 @@ end
             """
         @test count_lint_errors(source) == 2
         @test lint_test(source,
-            "Line 1, column 1: Avoid non-const global variables")
+            "Global variable must have type annotation")
         @test lint_test(source,
-            "Line 2, column 1: Avoid non-const global variables")
+            "Global variable must have type annotation")
     end
 end
 

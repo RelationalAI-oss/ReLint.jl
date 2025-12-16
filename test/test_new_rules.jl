@@ -68,6 +68,7 @@ end
         y::Int
     end
     """
+    @test lint_test(code1, "Line 1, column 1: Consider using `@auto_hash_equals` for struct `Point`")
 
     # Should NOT trigger - has @auto_hash_equals
     code2 = """
@@ -76,6 +77,8 @@ end
         y::Int
     end
     """
+    @test !lint_has_error_test(code2)
+
 
     # Should NOT trigger - private struct
     code3 = """
@@ -84,6 +87,16 @@ end
         y::Int
     end
     """
+    @test !lint_has_error_test(code3)
+
+    # Should NOT trigger - mutable
+    code4 = """
+    mutable struct MutablePoint
+        x::Int
+        y::Int
+    end
+    """
+    @test !lint_has_error_test(code4)
 end
 
 @testset "NotFullyParameterizedConstructorRule" begin

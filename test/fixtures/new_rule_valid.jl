@@ -41,6 +41,11 @@ struct _PrivateStruct  # Private structs (prefix _) don't need it
     x::Int
 end
 
+mutable struct MutableStruct  # Mutable structs don't need it
+    x::Int
+    y::Int
+end
+
 # NotFullyParameterizedConstructorRule - valid pattern
 function process_data_correctly(items)
     results = []

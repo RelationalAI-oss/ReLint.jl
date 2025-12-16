@@ -84,6 +84,14 @@ end
         y::Int
     end
     """
+
+    # Should NOT trigger - mutable
+    code4 = """
+    mutable struct MutablePoint
+        x::Int
+        y::Int
+    end
+    """
 end
 
 @testset "NotFullyParameterizedConstructorRule" begin

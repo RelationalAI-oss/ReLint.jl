@@ -41,7 +41,7 @@ struct _PrivateStruct  # Private structs (prefix _) don't need it
     x::Int
 end
 
-mutable struct MutableStruct  # Mutable structs don't need it
+mutable struct MutablePoint  # Mutable structs don't need it
     x::Int
     y::Int
 end

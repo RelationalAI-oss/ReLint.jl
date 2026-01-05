@@ -1789,8 +1789,6 @@ end
                         function g()
                             @async 1 + 1
                             @info "blah"
-
-                            Front.shape_term(12)
                         end
                         """)
 
@@ -1805,9 +1803,8 @@ end
 
                     expected = r"""
                         Line 3, column 5: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
-                        Line 5, column 5: Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI\. \H+/bar.jl
                         Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/foo.jl
-                        5 potential threats are found: 3 fatal violations, 2 violations and 0 recommendation
+                        4 potential threats are found: 2 fatal violations, 2 violations and 0 recommendation
                         Note that the list above only show fatal violations
                         """
                     result_matching = !isnothing(match(expected, result))

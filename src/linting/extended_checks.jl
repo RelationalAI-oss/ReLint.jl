@@ -361,7 +361,7 @@ struct NoImportRule <: ViolationLintRule end
 struct NotImportingRAICodeRule <: ViolationLintRule end
 struct BareUsingRule <: ViolationLintRule end
 struct UntypedArrayComprehensionRule <: ViolationLintRule end
-struct ReturnTypeAnnotationRule <: RecommendationLintRule end
+# Disabled: struct ReturnTypeAnnotationRule <: RecommendationLintRule end
 struct StringConcatenationRule <: RecommendationLintRule end
 struct NoGlobalVariablesRule <: RecommendationLintRule end
 struct ConstGlobalMissingTypeRule <: ViolationLintRule end
@@ -883,21 +883,22 @@ function check(t::UntypedArrayComprehensionRule, x::EXPR, markers::Dict{Symbol,S
     generic_check(t, x, "[hole_variable for hole_variable in hole_variable]", msg)
 end
 
-function check(t::ReturnTypeAnnotationRule, x::EXPR, markers::Dict{Symbol,String})
-    # Skip test files
-    if haskey(markers, :filename)
-        contains(markers[:filename], "test/") && return
-        contains(markers[:filename], "test.jl") && return
-    end
-
-    msg = "Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
-
-    # Pattern: function name()::Type ... end (multiline)
-    generic_check(t, x, "function hole_variable(hole_variable_star)::hole_variable hole_variable_star end", msg)
-
-    # Pattern: name()::Type = ... (one-liner)
-    generic_check(t, x, "hole_variable(hole_variable_star)::hole_variable = hole_variable", msg)
-end
+# Disabled: ReturnTypeAnnotationRule
+# function check(t::ReturnTypeAnnotationRule, x::EXPR, markers::Dict{Symbol,String})
+#     # Skip test files
+#     if haskey(markers, :filename)
+#         contains(markers[:filename], "test/") && return
+#         contains(markers[:filename], "test.jl") && return
+#     end
+#
+#     msg = "Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
+#
+#     # Pattern: function name()::Type ... end (multiline)
+#     generic_check(t, x, "function hole_variable(hole_variable_star)::hole_variable hole_variable_star end", msg)
+#
+#     # Pattern: name()::Type = ... (one-liner)
+#     generic_check(t, x, "hole_variable(hole_variable_star)::hole_variable = hole_variable", msg)
+# end
 
 function check(t::StringConcatenationRule, x::EXPR, markers::Dict{Symbol,String})
     # Skip test files

@@ -2042,7 +2042,8 @@ end
 
 # TODO: The RAI Style Guide recommends against return type annotations, but this rule
 # is not currently enforced. Add tests here when the rule is re-enabled.
-# See: https://github.com/RelationalAI/RAIStyle#type-annotations
+# See: https://github.com/RelationalAI/RAIStyle#type-annotations (There was previously
+# a rule for this, but it was removed in PR #75.)
 
 @testset "String concatenation with *" begin
     @testset "string literal concatenation" begin

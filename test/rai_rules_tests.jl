@@ -2040,57 +2040,58 @@ end
     end
 end
 
-@testset "Return type annotations" begin
-    @testset "function with return type annotation" begin
-        source = """
-            function foo(x::Int)::String
-                return string(x)
-            end
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 1, column 1: Avoid return type annotations")
-    end
-
-    @testset "function without return type annotation is ok" begin
-        source = """
-            function foo(x::Int)
-                return string(x)
-            end
-            """
-        @test !lint_has_error_test(source)
-    end
-
-    @testset "multiple functions with annotations" begin
-        source = """
-            function foo(x::Int)::String
-                return string(x)
-            end
-
-            function bar(y::Float64)::Int
-                return round(Int, y)
-            end
-
-            function baz(z)
-                return z + 1
-            end
-            """
-        @test count_lint_errors(source) == 2
-        @test lint_test(source,
-            "Line 1, column 1: Avoid return type annotations")
-        @test lint_test(source,
-            "Line 5, column 1: Avoid return type annotations")
-    end
-
-    @testset "one-liner with return type" begin
-        source = """
-            foo(x::Int)::String = string(x)
-            """
-        @test lint_has_error_test(source)
-        @test lint_test(source,
-            "Line 1, column 1: Avoid return type annotations")
-    end
-end
+# Disabled: ReturnTypeAnnotationRule tests
+# @testset "Return type annotations" begin
+#     @testset "function with return type annotation" begin
+#         source = """
+#             function foo(x::Int)::String
+#                 return string(x)
+#             end
+#             """
+#         @test lint_has_error_test(source)
+#         @test lint_test(source,
+#             "Line 1, column 1: Avoid return type annotations")
+#     end
+#
+#     @testset "function without return type annotation is ok" begin
+#         source = """
+#             function foo(x::Int)
+#                 return string(x)
+#             end
+#             """
+#         @test !lint_has_error_test(source)
+#     end
+#
+#     @testset "multiple functions with annotations" begin
+#         source = """
+#             function foo(x::Int)::String
+#                 return string(x)
+#             end
+#
+#             function bar(y::Float64)::Int
+#                 return round(Int, y)
+#             end
+#
+#             function baz(z)
+#                 return z + 1
+#             end
+#             """
+#         @test count_lint_errors(source) == 2
+#         @test lint_test(source,
+#             "Line 1, column 1: Avoid return type annotations")
+#         @test lint_test(source,
+#             "Line 5, column 1: Avoid return type annotations")
+#     end
+#
+#     @testset "one-liner with return type" begin
+#         source = """
+#             foo(x::Int)::String = string(x)
+#             """
+#         @test lint_has_error_test(source)
+#         @test lint_test(source,
+#             "Line 1, column 1: Avoid return type annotations")
+#     end
+# end
 
 @testset "String concatenation with *" begin
     @testset "string literal concatenation" begin

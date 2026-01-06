@@ -993,11 +993,6 @@ function check(t::MissingAutoHashEqualsRule, x::EXPR, markers::Dict{Symbol,Strin
         contains(markers[:filename], "test.jl") && return
     end
 
-    # Check if there's an @auto_hash_equals macro before this struct
-    if haskey(markers, :macrocall) && markers[:macrocall] == "@auto_hash_equals"
-        return
-    end
-
     # Get the struct name
     struct_name = fetch_value(x, :IDENTIFIER)
     isnothing(struct_name) && return
@@ -1005,13 +1000,9 @@ function check(t::MissingAutoHashEqualsRule, x::EXPR, markers::Dict{Symbol,Strin
     # Skip private structs (start with underscore)
     startswith(struct_name, "_") && return
 
-    # Check if it's a mutable struct
-    # Mutable struct AST: [1] = MUTABLE keyword, [2] = STRUCT keyword, length = 6
-    # Immutable struct AST: [1] = STRUCT keyword, [2] = FALSE, length = 5
-    if length(x) >= 1 && headof(x[1]) === :MUTABLE
-         # Skip mutable structs - they shouldn't use @auto_hash_equals
-        return
-   end
+    # Check if there's an @auto_hash_equals macro before this struct
+    # This is a simplified check - in practice, we'd need to track macros in markers
+    # For now, emit a recommendation for all non-private structs
 
     msg = "Consider using `@auto_hash_equals` for struct `$(struct_name)` if it will be used as a dictionary key or set member. Skip this if the struct is a bits type or requires custom equality. [Explanation](https://github.com/RelationalAI/RAIStyle#struct-equality)"
 

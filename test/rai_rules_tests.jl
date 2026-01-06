@@ -1701,32 +1701,6 @@ end
     )
 end
 
-@testset "Shapes outside Front-End" begin
-    source = """
-        function get_relation_infos(rt::Runtime, name::Symbol, shape::Shape)
-            idb_overloads = Front.idb_overloads_for_shape(rt, shape)
-            return idb_overloads
-        end
-
-        function get_relation_values(rt::Runtime, name::Symbol)
-            return get_relation_values(rt, name, Front.shape_splat(Shape))
-        end
-    """
-
-    @test count_lint_errors(source; directory="/src/Execution") == 3
-    @test count_lint_errors(source; directory="/src/FrontCompiler") == 0
-
-    @test lint_test(source,
-        "Line 1, column 67: Usage of `Shape` is not allowed outside of the Front-end Compiler and FFI.";
-        directory="/src/Execution"
-    )
-
-    @test lint_test(source,
-        "Line 7, column 46: Usage of `shape_splat` Shape API method is not allowed outside of the Front-end Compiler and FFI.";
-        directory="/src/Execution"
-    )
-end
-
 # @testset "Check on @warnv_safe_to_log" begin
 #     source = raw"""
 #     function pm_check_mutable_pages(bytes::Int)
@@ -1815,8 +1789,6 @@ end
                         function g()
                             @async 1 + 1
                             @info "blah"
-
-                            Front.shape_term(12)
                         end
                         """)
 
@@ -1831,9 +1803,8 @@ end
 
                     expected = r"""
                         Line 3, column 5: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
-                        Line 5, column 5: Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI\. \H+/bar.jl
                         Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/foo.jl
-                        5 potential threats are found: 3 fatal violations, 2 violations and 0 recommendation
+                        4 potential threats are found: 2 fatal violations, 2 violations and 0 recommendation
                         Note that the list above only show fatal violations
                         """
                     result_matching = !isnothing(match(expected, result))

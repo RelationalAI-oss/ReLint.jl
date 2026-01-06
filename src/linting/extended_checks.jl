@@ -361,9 +361,10 @@ struct NoImportRule <: ViolationLintRule end
 struct NotImportingRAICodeRule <: ViolationLintRule end
 struct BareUsingRule <: ViolationLintRule end
 struct UntypedArrayComprehensionRule <: ViolationLintRule end
-# TODO: The RAI Style Guide recommends against return type annotations, but this rule
-# is not currently enforced. See: https://github.com/RelationalAI/RAIStyle#type-annotations (There was previously a rule for this, but
-# it was removed in PR #75.)
+# TODO(RAI-95949): Enforce the style guide's recommendation against return type annotations.
+# First we need `@assert_returntype`, as suggested in the style guide.
+# See: https://github.com/RelationalAI/RAIStyle#type-annotations
+# (There was previously a rule for this, but it was removed in PR #75.)
 struct StringConcatenationRule <: RecommendationLintRule end
 struct NoGlobalVariablesRule <: RecommendationLintRule end
 struct ConstGlobalMissingTypeRule <: ViolationLintRule end

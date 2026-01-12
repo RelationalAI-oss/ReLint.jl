@@ -60,32 +60,6 @@ end
     """
 end
 
-@testset "MissingAutoHashEqualsRule" begin
-    # Should trigger - public struct without @auto_hash_equals
-    code1 = """
-    struct Point
-        x::Int
-        y::Int
-    end
-    """
-
-    # Should NOT trigger - has @auto_hash_equals
-    code2 = """
-    @auto_hash_equals struct Point
-        x::Int
-        y::Int
-    end
-    """
-
-    # Should NOT trigger - private struct
-    code3 = """
-    struct _InternalPoint
-        x::Int
-        y::Int
-    end
-    """
-end
-
 @testset "NotFullyParameterizedConstructorRule" begin
     # Only triggers in src/Compiler/ directory
 
@@ -341,7 +315,6 @@ end
 
     @test "ConstGlobalMissingTypeRule" in all_rule_names
     @test "IsNothingPerformanceRule" in all_rule_names
-    @test "MissingAutoHashEqualsRule" in all_rule_names
     @test "NotFullyParameterizedConstructorRule" in all_rule_names
     @test "ClosureCaptureByValueRule" in all_rule_names
 end

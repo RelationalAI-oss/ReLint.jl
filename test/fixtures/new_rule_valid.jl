@@ -29,18 +29,6 @@ function api_check(x)
     return x
 end
 
-# MissingAutoHashEqualsRule - valid patterns
-using AutoHashEquals
-
-@auto_hash_equals struct GoodPoint
-    x::Int
-    y::Int
-end
-
-struct _PrivateStruct  # Private structs (prefix _) don't need it
-    x::Int
-end
-
 # NotFullyParameterizedConstructorRule - valid pattern
 function process_data_correctly(items)
     results = []

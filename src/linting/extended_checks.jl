@@ -366,7 +366,6 @@ struct StringConcatenationRule <: RecommendationLintRule end
 struct NoGlobalVariablesRule <: RecommendationLintRule end
 struct ConstGlobalMissingTypeRule <: ViolationLintRule end
 struct IsNothingPerformanceRule <: RecommendationLintRule end
-struct MissingAutoHashEqualsRule <: RecommendationLintRule end
 struct NotFullyParameterizedConstructorRule <: ViolationLintRule end
 struct ClosureCaptureByValueRule <: RecommendationLintRule end
 
@@ -979,36 +978,6 @@ function check(t::IsNothingPerformanceRule, x::EXPR, markers::Dict{Symbol,String
     msg = "In performance-critical code, prefer `x === nothing` or `x isa Nothing` over `isnothing(x)`. [Explanation](https://github.com/RelationalAI/RAIStyle#isnothing-vs-isa-nothing-vs--nothing)"
 
     generic_check(t, x, "isnothing(hole_variable)", msg)
-end
-
-function check(t::MissingAutoHashEqualsRule, x::EXPR, markers::Dict{Symbol,String})
-    # Only check struct definitions
-    if headof(x) !== :struct
-        return
-    end
-
-    # Skip test files - testing often uses simple structs without equality
-    if haskey(markers, :filename)
-        contains(markers[:filename], "test/") && return
-        contains(markers[:filename], "test.jl") && return
-    end
-
-    # Get the struct name
-    struct_name = fetch_value(x, :IDENTIFIER)
-    isnothing(struct_name) && return
-
-    # Skip private structs (start with underscore)
-    startswith(struct_name, "_") && return
-
-    # Check if there's an @auto_hash_equals macro before this struct
-    # This is a simplified check - in practice, we'd need to track macros in markers
-    # For now, emit a recommendation for all non-private structs
-
-    msg = "Consider using `@auto_hash_equals` for struct `$(struct_name)` if it will be used as a dictionary key or set member. Skip this if the struct is a bits type or requires custom equality. [Explanation](https://github.com/RelationalAI/RAIStyle#struct-equality)"
-
-    # This is a recommendation, not a hard error, so we'll be conservative
-    # Only warn for non-bits types (though detecting bits types requires more analysis)
-    seterror!(x, LintRuleReport(t, msg))
 end
 
 function check(t::NotFullyParameterizedConstructorRule, x::EXPR, markers::Dict{Symbol,String})

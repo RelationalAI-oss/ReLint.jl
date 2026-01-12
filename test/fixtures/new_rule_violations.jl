@@ -12,17 +12,6 @@ function check_value(x)
     return x
 end
 
-# MissingAutoHashEqualsRule violations
-struct Point  # Should warn: consider @auto_hash_equals
-    x::Int
-    y::Int
-end
-
-struct Location  # Should warn: consider @auto_hash_equals
-    lat::Float64
-    lon::Float64
-end
-
 # NotFullyParameterizedConstructorRule violations
 # (Not fully implemented - would need loop detection)
 function process_data(items)

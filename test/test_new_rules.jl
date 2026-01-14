@@ -3,9 +3,6 @@
 using Test
 using ReLint
 
-# Include common test utilities
-include(joinpath(@__DIR__, "common.jl"))
-
 @testset "ConstGlobalMissingTypeRule" begin
     # Should trigger warning - untyped global
     code1 = """

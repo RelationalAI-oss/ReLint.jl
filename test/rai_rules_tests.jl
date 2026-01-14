@@ -2090,6 +2090,22 @@ end
         @test lint_test(source,
             "Line 1, column 1: Avoid return type annotations")
     end
+
+    @testset "one-liner without return type" begin
+        source = """
+            foo(x::Int) = string(x)
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "derived functions" begin
+        source = """
+            @derived v=1 function _is_ivm_frame(rt::Runtime, path::RelPath)::Bool
+                return RAI_BackIR.has_attr(definition_of(rt, path), :frame)
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
 end
 
 @testset "String concatenation with *" begin

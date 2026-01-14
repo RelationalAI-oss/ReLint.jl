@@ -889,6 +889,11 @@ function check(t::ReturnTypeAnnotationRule, x::EXPR, markers::Dict{Symbol,String
         contains(markers[:filename], "test.jl") && return
     end
 
+    if haskey(markers, :macrocall)
+        # return type annotation are mandatory in @derived functions
+        contains(markers[:macrocall], "derived") && return
+    end
+
     msg = "Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations)."
 
     # Pattern: function name()::Type ... end (multiline)

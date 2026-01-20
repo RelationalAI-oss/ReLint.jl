@@ -353,7 +353,6 @@ struct InterpolationInSafeLogRule <: RecommendationLintRule end
 struct UseOfStaticThreads <: ViolationLintRule end
 struct LogStatementsMustBeSafe <: FatalLintRule end
 struct AssertionStatementsMustBeSafe <: FatalLintRule end
-struct NonFrontShapeAPIUsageRule <: FatalLintRule end
 struct MustNotUseShow <: FatalLintRule end
 struct NoinlineAndLiteralRule <: FatalLintRule end
 struct NoReturnInAnonymousFunctionRule <: FatalLintRule end
@@ -636,30 +635,6 @@ function check(t::RelPathAPIUsageRule, x::EXPR, markers::Dict{Symbol,String})
     generic_check(t, x, "split_path(hole_variable)", "Usage of `RelPath` API method `split_path` is not allowed in this context.")
     generic_check(t, x, "drop_first(hole_variable)", "Usage of `RelPath` API method `drop_first` is not allowed in this context.")
     generic_check(t, x, "relpath_from_signature(hole_variable)", "Usage of method `relpath_from_signature` is not allowed in this context.")
-end
-
-function check(t::NonFrontShapeAPIUsageRule, x::EXPR, markers::Dict{Symbol,String})
-    haskey(markers, :filename) || return
-    # In the front-end and in FFI, we are allowed to refer to `Shape`
-    contains(markers[:filename], "src/FrontCompiler") && return
-    contains(markers[:filename], "packages/RAI_FrontCompiler") && return
-    contains(markers[:filename], "src/FFI") && return
-    # We're allowing this for serialization.
-    contains(markers[:filename], "src/Database") && return
-    contains(markers[:filename], "packages/Shapes") && return
-    contains(markers[:filename], "packages/RAI_FrontIR") && return
-    # Also, allow usages in tests
-    contains(markers[:filename], "test/") && return
-    # Also, allow usages of the name `Shape` in `packages/` although they refer to a different thing.
-    contains(markers[:filename], "packages/RAI_Protos/src/proto/metadata.proto") && return
-    contains(markers[:filename], "packages/RAI_Protos/src/gen/relationalai/protocol/metadata_pb.jl") && return
-
-    generic_check(t, x, "shape_term(hole_variable_star)", "Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI.")
-    generic_check(t, x, "Front.shape_term(hole_variable_star)", "Usage of `shape_term` Shape API method is not allowed outside of the Front-end Compiler and FFI.")
-    generic_check(t, x, "shape_splat(hole_variable_star)", "Usage of `shape_splat` Shape API method is not allowed outside of the Front-end Compiler and FFI.")
-    generic_check(t, x, "Front.shape_splat(hole_variable_star)", "Usage of `shape_splat` Shape API method is not allowed outside of the Front-end Compiler and FFI.")
-    generic_check(t, x, "ffi_shape_term(hole_variable_star)", "Usage of `ffi_shape_term` is not allowed outside of the Front-end Compiler and FFI.")
-    generic_check(t, x, "Shape", "Usage of `Shape` is not allowed outside of the Front-end Compiler and FFI.")
 end
 
 function check(t::InterpolationInSafeLogRule, x::EXPR)

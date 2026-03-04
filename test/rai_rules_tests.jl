@@ -2186,3 +2186,28 @@ end
     print_report(PreCommitFormat(), io, lint_report, result)
     @test String(take!(io)) == "Line 0, column 0: error \n"
 end
+
+@testset "Warning when modifying ENV" begin
+    @testset "Just reaching ENV" begin
+        source = raw"""
+            function f(name)
+                println("Env var: ", ENV["HOME"])
+            end
+            """
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "Modifying ENV" begin
+        source = raw"""
+            function f(name)
+                ENV["HOME"] = "/tmp"
+                push!(ENV, "NEW_VAR" => "value")
+                delete!(ENV, "HOME")
+                setindex!(ENV, "/tmp", "HOME")
+                get!(ENV, "/tmp", "HOME")
+                pop!(ENV, "HOME")
+            end
+            """
+        @test count_lint_errors(source) == 6
+    end
+end

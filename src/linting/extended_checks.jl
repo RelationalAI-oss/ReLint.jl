@@ -1061,7 +1061,7 @@ end
 
 
 function check(t::AccessingENVRule, x::EXPR)
-    msg = "Accessing `ENV` is not thread-safe, be careful when using it. [URL](https://relationalai.slack.com/archives/C0AJLPBD273/p1772635179172879)"
+    msg = "Mutating `ENV` is not thread-safe, only do so in a single-threaded context. [URL](https://relationalai.slack.com/archives/C0AJLPBD273/p1772635179172879)"
 
     generic_check(t, x, "ENV[hole_variable] = hole_variable", msg)
     generic_check(t, x, "pop!(ENV, hole_variable)", msg)

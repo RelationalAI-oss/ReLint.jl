@@ -367,6 +367,7 @@ struct ConstGlobalMissingTypeRule <: ViolationLintRule end
 struct IsNothingPerformanceRule <: RecommendationLintRule end
 struct NotFullyParameterizedConstructorRule <: ViolationLintRule end
 struct ClosureCaptureByValueRule <: RecommendationLintRule end
+struct AccessingENVRule <: RecommendationLintRule end
 
 include("text_lint_rules.jl")
 
@@ -1056,4 +1057,16 @@ function check(t::ClosureCaptureByValueRule, x::EXPR, markers::Dict{Symbol,Strin
         msg = "Nested function may capture variables by reference, causing boxing and type instability. Consider using `let x = x` to capture by value for better performance. [Explanation](https://github.com/RelationalAI/RAIStyle#closure-capture-performance)"
         seterror!(x, LintRuleReport(t, msg))
     end
+end
+
+
+function check(t::AccessingENVRule, x::EXPR)
+    msg = "Accessing `ENV` is not thread-safe, be careful when using it. [URL](https://relationalai.slack.com/archives/C0AJLPBD273/p1772635179172879)"
+
+    generic_check(t, x, "ENV[hole_variable] = hole_variable", msg)
+    generic_check(t, x, "pop!(ENV, hole_variable)", msg)
+    generic_check(t, x, "delete!(ENV, hole_variable)", msg)
+    generic_check(t, x, "setindex!(ENV, hole_variable, hole_variable)", msg)
+    generic_check(t, x, "get!(ENV, hole_variable, hole_variable)", msg)
+    generic_check(t, x, "push!(ENV, hole_variable)", msg)
 end

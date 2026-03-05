@@ -4,6 +4,7 @@ version = "0.9.0"
 
 [deps]
 Argus = "e39743ec-b2cc-45ef-a990-b666fc093538"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CSTParser = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -12,6 +13,8 @@ JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [compat]
+Argus = "0.1.0"
+BenchmarkTools = "1.6.3"
 CSTParser = "3.3"
 JuliaSyntax = "1.0.2"
 julia = "1"

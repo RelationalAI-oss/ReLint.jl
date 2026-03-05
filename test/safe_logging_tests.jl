@@ -63,7 +63,7 @@
     @testset "@safe in a macro 1" begin
         source = raw"""
             macro spawn_periodic_task(name, period, expr, ending_expr=nothing)
-                error_msg = "Periodic task name must be `@safe(\"name\")`, so it can be logged: $(__source__)"
+                error_msg = "Periodic task name must be `@safe(\\\"name\\\")`, so it can be logged: $(__source__)"
                 @dassert0 is_safe_expr_literal(name) @safe(error_msg)
 
                 return quote

@@ -18,7 +18,7 @@
 # abstract type LintFileExclusion end
 
 struct LintContext
-    rules_to_run::Vector{DataType}
+    rules_to_run::Vector{Rule}
     regex_exclusions #::Vector{LintFileExclusion}
 
     function LintContext(dts_as_str::Vector{String})
@@ -31,8 +31,8 @@ struct LintContext
         return new(dt, [])
     end
 
-    LintContext(s::Vector{DataType}) = new(s, [])
-    LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s) , [])
+    LintContext(s::Vector{Rule}) = new(s, [])
+    # LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s) , [])
     LintContext() = new(all_rules(), [])
     LintContext(a, b) = new(a, b)
 end
@@ -388,7 +388,9 @@ const all_text_lint_rule_types = Ref{Vector{DataType}}(
 )
 
 function all_rules()
-    return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
+    # return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
+    return [general["error"], general["in"], general["haskey"],
+            fatal["unsafe-logging"], fatal["unsafe-assert"]]
 end
 
 # template -> EXPR to be compared

@@ -11,7 +11,11 @@ mutable struct LintMeta
     LintMeta(v) = new(v)
 end
 
-include("linting/argus-rules.jl")
 include("linting/extended_checks.jl")
 include("interface.jl")
+
+function __init__()
+    include(joinpath(@__DIR__, "linting/argus-rules.jl"))
+end
+
 end

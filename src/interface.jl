@@ -4,18 +4,6 @@ using JSON3
 global MAX_REPORTED_ERRORS = 60 # 1_000_000
 
 # Each individual rule violation report
-# mutable struct LintRuleReport
-#     rule::LintRule
-#     msg::String
-#     template::String
-#     file::String
-#     line::Int64
-#     column::Int64
-#     is_disabled::Bool   # Happens with a comments in the code
-
-#     offset::Int64
-# end
-# LintRuleReport(rule::LintRule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
 mutable struct LintRuleReport
     rule::Rule
     msg::String
@@ -38,15 +26,6 @@ Argus_result_to_LintRuleReport(rule::Rule, bindings::BindingSet) =
                    false,
                    0)
 
-# is_recommendation(::T) where {T <: RecommendationLintRule} = true
-# is_recommendation(::T) where {T <: LineRecommendationLintRule} = true
-# is_recommendation(_) = false
-# is_violation(::T) where {T <: ViolationLintRule} = true
-# is_violation(::T) where {T <: LineViolationLintRule} = true
-# is_violation(_) = false
-# is_fatal(r::T) where {T <: FatalLintRule} = true
-# is_fatal(r::T) where {T <: LineFatalLintRule} = true
-# is_fatal(_) = false
 is_recommendation(r::Rule) = haskey(recommendation, r.name)
 is_violation(r::Rule) = haskey(violation, r.name)
 is_fatal(r::Rule) = haskey(fatal, r.name)
@@ -181,44 +160,21 @@ Runs lint checks on `text`, lints will be reported as comming from
 `file`.
 """
 function lint_text(file_content_string::AbstractString; filename = "<string>", context = LintContext())
-    # ast = CSTParser.parse(file_content_string, true)
     ast = JuliaSyntax.parseall(SyntaxNode, file_content_string; filename=filename)
     all_lines = split(file_content_string, "\n")
 
+    # TODO: Integrate markers in Argus rules.
     markers::Dict{Symbol, String} = Dict(:filename => filename)
-    # check_all(ast, markers, context)
 
     lint_rule_reports = []
 
+    # AST rules
     for rule in context.rules_to_run
         match_results = map(m -> m[1], rule_match(rule, ast).matches)
         for match_result in match_results
             push!(lint_rule_reports, Argus_result_to_LintRuleReport(rule, match_result))
         end
     end
-
-    # # AST rules
-    # for (offset, x) in collect_lint_report(ast)
-    #     if haserror(x)
-    #         # The next line should be deleted
-    #         lint_rule_report = x.meta.error
-    #         lint_rule_report.offset = offset
-
-    #         line_number, column, annotation_line = convert_offset_to_line_from_lines(lint_rule_report.offset + 1, all_lines)
-    #         lint_rule_report.line = line_number
-    #         lint_rule_report.column = column
-
-    #         # If the annotation is to disable lint,
-    #         if annotation_line == "lint-disable-line"
-    #             # then we disable it.
-    #         elseif !isnothing(annotation_line) && startswith("lint-disable-line: $(lint_rule_report.msg)", annotation_line)
-    #             # then we disable it.
-    #         else
-    #             # Else we record it.
-    #             push!(lint_rule_reports, lint_rule_report)
-    #         end
-    #     end
-    # end
 
     # # Text rules
     # for (line_number, line) in enumerate(all_lines)

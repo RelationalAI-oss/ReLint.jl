@@ -1,6 +1,6 @@
 using ReLint
-using CSTParser, Test
-using ReLint: convert_offset_to_line_from_lines, check_all
+using Test
+using ReLint: convert_offset_to_line_from_lines
 
 include(joinpath(@__DIR__, "common.jl"))
 

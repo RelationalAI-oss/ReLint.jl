@@ -2,8 +2,6 @@ module ReLint
 
 using Argus
 using JuliaSyntax
-using CSTParser: CSTParser, EXPR
-import InteractiveUtils
 
 mutable struct LintMeta
     error

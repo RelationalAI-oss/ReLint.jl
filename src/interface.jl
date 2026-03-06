@@ -26,9 +26,9 @@ Argus_result_to_LintRuleReport(rule::Rule, bindings::BindingSet) =
                    false,
                    0)
 
-is_recommendation(r::Rule) = haskey(recommendation, r.name)
-is_violation(r::Rule) = haskey(violation, r.name)
-is_fatal(r::Rule) = haskey(fatal, r.name)
+is_recommendation(r::Rule) = haskey(RECOMMENDATION_RULE_GROUP, r.name)
+is_violation(r::Rule) = haskey(VIOLATION_RULE_GROUP, r.name)
+is_fatal(r::Rule) = haskey(FATAL_RULE_GROUP, r.name)
 
 is_recommendation(r::LintRuleReport) = is_recommendation(r.rule)
 is_violation(r::LintRuleReport) = is_violation(r.rule)

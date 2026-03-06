@@ -177,8 +177,12 @@ end
         @fail [:args] begin
             for s in args.src
                 k = kind(s)
-                k == JuliaSyntax.K"parameters" && break
-                JuliaSyntax.is_literal(s) || JuliaSyntax.is_identifier(s) || k == JuliaSyntax.K"char" || k == JuliaSyntax.K"string" ||
+                k == K"parameters" && break
+                JuliaSyntax.is_literal(s) ||
+                    JuliaSyntax.is_identifier(s) ||
+                    k == K"char" ||
+                    k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
+                    k == K"..." ||
                     return false
             end
             return true
@@ -193,13 +197,17 @@ end
         @fail [:args, :kwargs] begin
             for s in args.src
                 k = kind(s)
-                JuliaSyntax.is_literal(s) || JuliaSyntax.is_identifier(s) || k == JuliaSyntax.K"char" || k == JuliaSyntax.K"string" ||
+                JuliaSyntax.is_literal(s) ||
+                    JuliaSyntax.is_identifier(s) ||
+                    k == K"char" ||
+                    k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
+                    k == K"..." ||
                     return false
             end
             for kws in kwargs.src
                 k = kind(kws)
-                JuliaSyntax.is_literal(kws) || JuliaSyntax.is_identifier(kws) || k == JuliaSyntax.K"char" || k == JuliaSyntax.K"string" ||
-                    k == JuliaSyntax.K"=" && (JuliaSyntax.is_literal(kws.children[2]) || JuliaSyntax.is_identifier(kws.children[2])) ||
+                JuliaSyntax.is_literal(kws) || JuliaSyntax.is_identifier(kws) || k == K"char" || k == K"string" || k == K"..." ||
+                    k == K"=" && (JuliaSyntax.is_literal(kws.children[2]) || JuliaSyntax.is_identifier(kws.children[2])) ||
                     return false
             end
             return true
@@ -211,16 +219,46 @@ end
         @fail [:c] begin
             for s in c.args
                 k = kind(s)
-                JuliaSyntax.is_literal(s) || JuliaSyntax.is_identifier(s) || #k == Kind("char") || k == Kind("string") ||
+                JuliaSyntax.is_literal(s) ||
+                    JuliaSyntax.is_identifier(s) ||
+                    k == JuliaSyntax.K"char" ||
+                    k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
+                    k == K"..." ||
                     return false
             end
+            return true
+        end ""
+    end
+    # Infix call.
+    @pattern begin
+        ~or(@noinline({i:::infix_call}),
+            @noinline({i:::infix_dotcall}))
+        @fail [:i] begin
+            # Check lhs.
+            s = i.lhs.src
+            k = kind(s)
+            JuliaSyntax.is_literal(s) ||
+                JuliaSyntax.is_identifier(s) ||
+                k == K"char" ||
+                k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
+                k == K"..." ||
+                return false
+            # Check rhs.
+            s = i.rhs.src
+            k = kind(s)
+            JuliaSyntax.is_literal(s) ||
+                JuliaSyntax.is_identifier(s) ||
+                k == K"char" ||
+                k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
+                k == K"..." ||
+                return false
             return true
         end ""
     end
 end
 # TODO: Support for allowing match if the source and pattern differ only by a flag
 #       (e.g. INFIX_FLAG).
-@define_rule_in_group fatal "noinline-literal" begin
+@define_rule_in_group fatal "noinline-lit-or-id" begin
     description = """
     For call-site `@noinline` call, all args must be literals or identifiers only. \
     Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).

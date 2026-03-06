@@ -1,49 +1,12 @@
 using Argus
 
-general = RuleGroup("general")
-recommendation = RuleGroup("recommendation")
-violation = RuleGroup("violation")
-fatal = RuleGroup("fatal")
+# Recommendation rules
+# ====================
 
-@define_rule_in_group general "error" begin
-    description = """
-    Use custom exception instead of the generic `error()`.
-    """
-
-    pattern = @pattern error({_}...)
-end
-
-@define_rule_in_group general "in" begin
-    description = """
-    Use `tin(item,collection)` instead of the Julia's `in` or `∈`.
-    """
-
-    pattern = @pattern ~or(
-        in({_}, {_}),
-        ∈({_}, {_})
-    )
-end
-
-@define_rule_in_group general "haskey" begin
-    description = """
-    Use `thaskey(dict,key)` instead of the Julia's `haskey`.
-    """
-
-    pattern = @pattern haskey({_}, {_})
-end
-
-# StringInterpolationRule
-# TODO: `trivia` flag.
-# @define_rule_in_group general "string-interpolation" begin
-#     description = raw"""
-#     Use $(x) instead of $x ([explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#string-interpolation)).
-#     """
-
-#     pattern = @pattern ...
-# end
+RECOMMENDATION_RULE_GROUP = RuleGroup("recommendation")
 
 # ReturnTypeAnnotationRule
-@define_rule_in_group general "return-type-annotation" begin
+@define_rule_in_group RECOMMENDATION_RULE_GROUP "return-type-annotation" begin
     description = """
     Avoid return type annotations `function foo()::Type`.
     Return type annotations can hurt performance by forcing type conversions.
@@ -56,8 +19,55 @@ end
     )
 end
 
+# Violation rules
+# ===============
+
+VIOLATION_RULE_GROUP = RuleGroup("violation")
+
+@define_rule_in_group VIOLATION_RULE_GROUP "error" begin
+    description = """
+    Use custom exception instead of the generic `error()`.
+    """
+
+    pattern = @pattern error({_}...)
+end
+
+@define_rule_in_group VIOLATION_RULE_GROUP "in" begin
+    description = """
+    Use `tin(item,collection)` instead of the Julia's `in` or `∈`.
+    """
+
+    pattern = @pattern ~or(
+        in({_}, {_}),
+        ∈({_}, {_})
+    )
+end
+
+@define_rule_in_group VIOLATION_RULE_GROUP "haskey" begin
+    description = """
+    Use `thaskey(dict,key)` instead of the Julia's `haskey`.
+    """
+
+    pattern = @pattern haskey({_}, {_})
+end
+
+# StringInterpolationRule
+# TODO: `trivia` flag.
+# @define_rule_in_group VIOLATION_RULE_GROUP "string-interpolation" begin
+#     description = raw"""
+#     Use $(x) instead of $x ([explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#string-interpolation)).
+#     """
+
+#     pattern = @pattern ...
+# end
+
+# Fatal rules
+# ===========
+
+FATAL_RULE_GROUP = RuleGroup("fatal")
+
 # GeneratedRule
-@define_rule_in_group fatal "generated" begin
+@define_rule_in_group FATAL_RULE_GROUP "generated" begin
     description = """
     Don't use `@generated`
     """
@@ -102,7 +112,7 @@ end
     @pattern {_} = {arg:::safe_macro_arg}
 end
 # TODO: Rewrite with `not` pattern?
-@define_rule_in_group fatal "unsafe-logging" begin
+@define_rule_in_group FATAL_RULE_GROUP "unsafe-logging" begin
     description = """
     Unsafe logging statement. You must enclose variables and strings with `@safe(...)`.
     """
@@ -131,7 +141,7 @@ end
         end ""
     end
 end
-@define_rule_in_group fatal "unsafe-assert" begin
+@define_rule_in_group FATAL_RULE_GROUP "unsafe-assert" begin
     description = """
     Unsafe assertion statement. You must enclose the message with `@safe(...)`.
     """
@@ -156,7 +166,7 @@ end
 # MustNotUseShow
 #
 # TODO: Template.
-@define_rule_in_group fatal "show" begin
+@define_rule_in_group FATAL_RULE_GROUP "show" begin
     description = """
     Do not use `@show`, use `@info` instead.
     """
@@ -258,7 +268,7 @@ end
 end
 # TODO: Support for allowing match if the source and pattern differ only by a flag
 #       (e.g. INFIX_FLAG).
-@define_rule_in_group fatal "noinline-lit-or-id" begin
+@define_rule_in_group FATAL_RULE_GROUP "noinline-lit-or-id" begin
     description = """
     For call-site `@noinline` call, all args must be literals or identifiers only. \
     Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).

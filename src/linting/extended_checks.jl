@@ -32,7 +32,6 @@ struct LintContext
     end
 
     LintContext(s::Vector{Rule}) = new(s, [])
-    # LintContext(s::Vector{Any}) = new(convert(Vector{DataType}, s) , [])
     LintContext() = new(all_rules(), [])
     LintContext(a, b) = new(a, b)
 end
@@ -46,7 +45,7 @@ abstract type FatalLintRule <: ASTLintRule end
 include("text_lint_rules.jl")
 
 function all_rules()
-    # return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
-    return [general["error"], general["in"], general["haskey"],
-            fatal["unsafe-logging"], fatal["unsafe-assert"], fatal["noinline-lit-or-id"]]
+    return [values(RECOMMENDATION_RULE_GROUP)...,
+            values(VIOLATION_RULE_GROUP)...,
+            values(FATAL_RULE_GROUP)...]
 end

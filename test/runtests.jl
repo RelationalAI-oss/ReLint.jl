@@ -2,7 +2,6 @@ using ReLint
 using CSTParser, Test
 using ReLint: convert_offset_to_line_from_lines, check_all
 
-include("../src/linting/argus-rules.jl")
 include(joinpath(@__DIR__, "common.jl"))
 
 # include(joinpath(@__DIR__, "line_rules_tests.jl"))

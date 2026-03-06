@@ -390,7 +390,7 @@ const all_text_lint_rule_types = Ref{Vector{DataType}}(
 function all_rules()
     # return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
     return [general["error"], general["in"], general["haskey"],
-            fatal["unsafe-logging"], fatal["unsafe-assert"]]
+            fatal["unsafe-logging"], fatal["unsafe-assert"], fatal["noinline-lit-or-id"]]
 end
 
 # template -> EXPR to be compared

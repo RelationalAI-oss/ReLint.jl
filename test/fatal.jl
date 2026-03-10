@@ -218,7 +218,7 @@
             end
             @bar() do ; return "blah" end
             """
-            @test count_lint_errors(source) == 4  # TODO: 6
+            @test count_lint_errors(source) == 6
             @test lint_test(source,
                             "Line 6, column 5: Anonymous function must not have `return` [Explanation](https")
             @test lint_test(source,
@@ -227,11 +227,10 @@
                             "Line 8, column 1: Anonymous function must not have `return` [Explanation](https")
             @test lint_test(source,
                             "Line 15, column 6: Anonymous function must not have `return` [Explanation](https")
-            # TODO: Find a way around wrong pattern syntax with `{_} do {_}...`.
-            # @test lint_test(source,
-            #                 "Line 16, column 1: Anonymous function must not have `return` [Explanation](https")
-            # @test lint_test(source,
-            #                 "Line 19, column 1: Anonymous function must not have `return` [Explanation](https")
+            @test lint_test(source,
+                            "Line 16, column 1: Anonymous function must not have `return` [Explanation](https")
+            @test lint_test(source,
+                            "Line 19, column 1: Anonymous function must not have `return` [Explanation](https")
         end
         let
             source = """

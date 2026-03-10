@@ -194,4 +194,54 @@
         @test lint_test(source, "Line 12, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
     end
 
+    @testset "Return in anonymous functions" begin
+
+        let
+            source = raw"""
+            function foo(f)
+                f()
+                return "foo"
+            end
+
+            foo(() -> begin return "anonymous function" end)
+            foo() do ; return "anonymous function" end
+            foo() do
+                return "anonymous function"
+            end
+
+            macro bar(x)
+                return :(($(x))())
+            end
+            @bar(() -> begin return "anonymous function" end)
+            @bar() do
+            return "blah"
+            end
+            @bar() do ; return "blah" end
+            """
+            @test count_lint_errors(source) == 4  # TODO: 6
+            @test lint_test(source,
+                            "Line 6, column 5: Anonymous function must not have `return` [Explanation](https")
+            @test lint_test(source,
+                            "Line 7, column 1: Anonymous function must not have `return` [Explanation](https")
+            @test lint_test(source,
+                            "Line 8, column 1: Anonymous function must not have `return` [Explanation](https")
+            @test lint_test(source,
+                            "Line 15, column 6: Anonymous function must not have `return` [Explanation](https")
+            # TODO: Find a way around wrong pattern syntax with `{_} do {_}...`.
+            # @test lint_test(source,
+            #                 "Line 16, column 1: Anonymous function must not have `return` [Explanation](https")
+            # @test lint_test(source,
+            #                 "Line 19, column 1: Anonymous function must not have `return` [Explanation](https")
+        end
+        let
+            source = """
+            @bar(() -> begin "anonymous function" end)
+            function f()
+                return 12
+            end
+            """
+            @test count_lint_errors(source) == 0
+        end
+    end
+
 end

@@ -278,3 +278,19 @@ end
 end
 
 # NoReturnInAnonymousFunctionRule
+@define_rule_in_group FATAL_VIOLATIONS "return in anonymous function" begin
+    description = """
+    Anonymous function must not have `return` [Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure).
+    """
+
+    pattern = @pattern ~or(
+        ({_}...) -> begin
+            {_}...
+            return {_}...
+        end,
+        {_}({_}...) do {_}...
+            {_}...
+            return {_}...
+        end
+    )
+end

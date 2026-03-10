@@ -1,22 +1,3 @@
-#################################################################################
-# This file contains many specific and extended rules for Lint.
-# You probably needs to modify this files if:
-#   - you wish to add a new lint rule
-#   - document an existing rule
-#
-# If you wish to add a new Lint rule, you need:
-#   1. Define a new type, subtype of RecommendationLintRule or ViolationLintRule
-#   2. Write a new function function check(t::YOUR_NEW_TYPE, x::EXPR)
-#   3. Add your unit tests in rai_rules_tests.jl
-#   4. Restart your REPL if you use it
-#
-# If you wish to modify the report produced by Lint, interface.jl
-# is probably the place to start, not this file.
-#################################################################################
-
-
-# abstract type LintFileExclusion end
-
 struct LintContext
     rules_to_run::Vector{Rule}
     regex_exclusions #::Vector{LintFileExclusion}
@@ -45,7 +26,7 @@ abstract type FatalLintRule <: ASTLintRule end
 include("text_lint_rules.jl")
 
 function all_rules()
-    return [values(RECOMMENDATION_RULE_GROUP)...,
-            values(VIOLATION_RULE_GROUP)...,
-            values(FATAL_RULE_GROUP)...]
+    return [values(RECOMMENDATIONS)...,
+            values(VIOLATIONS)...,
+            values(FATAL_VIOLATIONS)...]
 end

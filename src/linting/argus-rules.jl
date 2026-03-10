@@ -278,6 +278,27 @@ end
 end
 
 # NoReturnInAnonymousFunctionRule
+@define_syntax_class :do_call_with_return "do call with explicit `return`" begin
+    @pattern begin
+        {f:::funcall}
+        @fail [:f] begin
+            isempty(f.args.src) && return true
+            do_node = f.args.src[end]
+            return !(kind(do_node) == K"do" &&
+                kind(do_node.children[2].children[end]) == K"return")
+        end ""
+    end
+    @pattern begin
+        {m:::macrocall}
+        @fail [:m] begin
+            isempty(m.args) && return true
+            do_node = m.args[end]
+            return !(kind(do_node) == K"do" &&
+                kind(do_node.children[2].children[end]) == K"return")
+        end ""
+    end
+end
+
 @define_rule_in_group FATAL_VIOLATIONS "return in anonymous function" begin
     description = """
     Anonymous function must not have `return` [Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure).
@@ -288,9 +309,6 @@ end
             {_}...
             return {_}...
         end,
-        {_}({_}...) do {_}...
-            {_}...
-            return {_}...
-        end
+        {_:::do_call_with_return}
     )
 end

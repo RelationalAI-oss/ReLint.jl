@@ -373,9 +373,19 @@ include("text_lint_rules.jl")
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
-        InteractiveUtils.subtypes(RecommendationLintRule),
-        InteractiveUtils.subtypes(ViolationLintRule),
-        InteractiveUtils.subtypes(FatalLintRule),
+        # InteractiveUtils.subtypes(RecommendationLintRule),
+        # InteractiveUtils.subtypes(ViolationLintRule),
+        # InteractiveUtils.subtypes(FatalLintRule),
+        ReturnTypeAnnotationRule,
+        ErrorRule,
+        InRule,
+        HasKeyRule,
+        GeneratedRule,
+        LogStatementsMustBeSafe,
+        AssertionStatementsMustBeSafe,
+        MustNotUseShow,
+        NoinlineAndLiteralRule,
+        NoReturnInAnonymousFunctionRule
     )
 )
 

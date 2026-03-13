@@ -7,6 +7,7 @@ include(joinpath(@__DIR__, "common.jl"))
 # include(joinpath(@__DIR__, "line_rules_tests.jl"))
 # include(joinpath(@__DIR__, "file_exclusion_tests.jl"))
 include(joinpath(@__DIR__, "fatal.jl"))
+include(joinpath(@__DIR__, "violations.jl"))
 
 # include(joinpath(@__DIR__, "lint_context_tests.jl"))
 # include(joinpath(@__DIR__, "rai_rules_tests.jl"))

@@ -24,6 +24,34 @@ end
 
 VIOLATIONS = RuleGroup("violations")
 
+# TODO: Template for `@spawn`.
+@define_rule_in_group VIOLATIONS "`@async`" begin
+    description = """
+    Use `@spawn` instead of `@async`.
+    """
+
+    pattern = @pattern ~or(@async({_}), Threads.@async({_}))
+end
+
+# TODO: Pattern variables in rule messages.
+@define_rule_in_group VIOLATIONS "initializing with `nthreads`" begin
+    description = """
+    `Threads.nthreads()` should not be used in a constant variable.
+    """
+
+    pattern = @pattern const {_} = Threads.nthreads()
+end
+@define_rule_in_group VIOLATIONS "initializing with `is_local_deployment`" begin
+    description = """
+    `is_local_deployment()` should not be used in a constant variable.
+    """
+
+    pattern = @pattern ~or(
+        :(const {_} = is_local_deployment()),
+        :(const {_} = Deployment.is_local_deployment())
+    )
+end
+
 @define_rule_in_group VIOLATIONS "error" begin
     description = """
     Use custom exception instead of the generic `error()`.

@@ -4,7 +4,7 @@ using Argus
 # =============
 
 # TODO: `string_literal` syntax class
-@define_rule_metadata :exclude_files begin
+@define_rule_hook :exclude_files begin
     args = @pattern [{files}...]
 
     pre_check = @check [:files] begin
@@ -17,7 +17,7 @@ using Argus
     post_check = nothing
 end
 
-@define_rule_metadata :only_in_dir begin
+@define_rule_hook :only_in_dir begin
     args = @pattern {dir}
 
     pre_check = @check [:dir] begin
@@ -95,7 +95,7 @@ end
         )))
     )
 
-    metadata = Dict(
+    hooks = Dict(
         :only_in_dir => "src/Compiler"
     )
 end

@@ -1,5 +1,35 @@
 using Argus
 
+# Rule metadata
+# =============
+
+# TODO: `string_literal` syntax class
+@define_rule_metadata :exclude_files begin
+    args = @pattern [{files}...]
+
+    pre_check = @check [:files] begin
+        file_names = map(s -> s.children[1].val, files.src)
+        if current_file() in file_names
+            skip_match()
+        end
+    end
+
+    post_check = nothing
+end
+
+@define_rule_metadata :only_in_dir begin
+    args = @pattern {dir}
+
+    pre_check = @check [:dir] begin
+        dir_name = dir.src.children[1].val
+        if !contains(current_file(), dir_name)
+            skip_match()
+        end
+    end
+
+    post_check = nothing
+end
+
 # Recommendation rules
 # ====================
 
@@ -49,6 +79,24 @@ end
     pattern = @pattern ~or(
         :(const {_} = is_local_deployment()),
         :(const {_} = Deployment.is_local_deployment())
+    )
+end
+
+@define_rule_in_group VIOLATIONS "array with no specific type" begin
+    description = """
+    Need a specific Array type to be provided.
+    """
+
+    pattern = @pattern ~and(
+        [],
+        ~not(~inside(~and(
+            {m:::macrocall},
+            ~fail([:m], !in(m.name, ["@match", "@matchrule"]), "")
+        )))
+    )
+
+    metadata = Dict(
+        :only_in_dir => "src/Compiler"
     )
 end
 

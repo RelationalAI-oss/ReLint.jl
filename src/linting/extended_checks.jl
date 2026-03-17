@@ -385,7 +385,8 @@ const all_extended_rule_types = Ref{Vector{DataType}}(
         AssertionStatementsMustBeSafe,
         MustNotUseShow,
         NoinlineAndLiteralRule,
-        NoReturnInAnonymousFunctionRule
+        NoReturnInAnonymousFunctionRule,
+        ArrayWithNoTypeRule,
     )
 )
 

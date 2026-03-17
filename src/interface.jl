@@ -161,6 +161,7 @@ Runs lint checks on `text`, lints will be reported as comming from
 """
 function lint_text(file_content_string::AbstractString; filename = "<string>", context = LintContext())
     ast = JuliaSyntax.parseall(SyntaxNode, file_content_string; filename=filename)
+    ast = Argus._normalise!(ast)
     all_lines = split(file_content_string, "\n")
 
     # TODO: Integrate markers in Argus rules.

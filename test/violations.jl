@@ -52,4 +52,63 @@
         end
     end
 
+    @testset "Array with no specific type" begin
+        let
+            source = """
+            function f()
+                x = []
+                y = String[]
+                return vcat(x, y)
+            end
+            """
+            # No error because this tmp file is not in the src/Compiler
+            @test !lint_has_error_test(source)
+        end
+
+        let
+            source = """
+            function f()
+                x = []
+                y = String[]
+                return vcat(x, y)
+            end
+            """
+            @test lint_test(
+                source,
+                "Line 2, column 9: Need a specific Array type to be provided.",
+                directory = "src/Compiler/")
+        end
+
+        let
+            source = """
+            function f()
+                @matchrule bindings_empty() =
+                    Bindings([], _::Missing) => CoreBindings([])
+
+                @matchrule and_to_true() =
+                    And([], annos) => BoolConstant(true, annos)
+
+                @matchrule and_singleton() =
+                    And([f], annos) => f
+
+                @match CoreRelAbstract(bs2, [], as2) = e2
+
+                @matchrule and_to_true() =
+                    And([], annos) => BoolConstant(true, annos)
+
+                @matchrule exists_empty() =
+                    Exists(e, _) where is_definitely_empty_expr(e) =>
+                        slice_to_false(input_val)
+                f = []
+            end
+            """
+            count_errors = count_lint_errors(source; directory = "src/Compiler/")
+            @test count_errors == 1
+            @test lint_test(
+                source,
+                "Line 19, column 9: Need a specific Array type to be provided.";
+                directory = "src/Compiler")
+        end
+    end
+
 end

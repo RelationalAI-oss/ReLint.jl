@@ -399,7 +399,7 @@ const all_text_lint_rule_types = Ref{Vector{DataType}}(
 )
 
 function all_rules()
-    return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
+    return vcat(all_extended_rule_types[])#, all_text_lint_rule_types[])
 end
 
 # template -> EXPR to be compared

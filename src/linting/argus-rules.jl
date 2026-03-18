@@ -41,8 +41,7 @@ RECOMMENDATIONS["return-type-annotation"] = Rule(
     """
     Avoid return type annotations `function foo()::Type`.
     Return type annotations can hurt performance by forcing type conversions.
-    [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations).
-    """,
+    [Explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#type-annotations).""",
     @pattern ~or(
         function ({f}({args}...)::{ret_type}) {_}... end,
         {_:::funcall}::{ret_type} = {_}
@@ -83,7 +82,7 @@ VIOLATIONS["array with no specific type"] = Rule(
         [],
         ~not(~inside(~and(
             {m:::macrocall},
-            ~fail([:m], !in(m.name, ["@match", "@matchrule"]), "")
+            ~when([:m], m.name in ["@match", "@matchrule"])
         )))
     )),
     Dict(
@@ -140,10 +139,10 @@ register_syntax_class!(:log_macro, SyntaxClass(
     [
         @pattern begin
             {m:::macrocall}
-            @fail [:m] begin
+            @when [:m] begin
                 log_macro_names = r"@info|@warn|@error|@debug"
-                !startswith(m.name, log_macro_names)
-            end ""
+                startswith(m.name, log_macro_names)
+            end
         end
     ]
 ))
@@ -154,18 +153,18 @@ register_syntax_class!(:safe_macro_arg, SyntaxClass(
         # Safe literal.
         (@pattern begin
              {arg}
-             @fail [:arg] begin
+             @when [:arg] begin
                  s = arg.src
                  k = kind(s)
                  # Strings are not safe.
-                 k == K"string" || endswith(string(k), "String") && return true
+                 (k == K"string" || endswith(string(k), "String")) && return false
                  # `nothing` is safe.
-                 !isnothing(s.data.val) && s.data.val == :nothing && return false
+                 !isnothing(s.data.val) && s.data.val == :nothing && return true
                  # Chars and literals other than strings are safe.
-                 (JuliaSyntax.is_literal(s) || k == K"char") && return false
+                 (JuliaSyntax.is_literal(s) || k == K"char") && return true
                  # Anything else is not safe.
-                 return true
-             end ""
+                 return false
+             end
          end),
         # Argument wrapped in `@safe`.
         (@pattern ~or(@safe({args}...),
@@ -175,19 +174,21 @@ register_syntax_class!(:safe_macro_arg, SyntaxClass(
         (@pattern {_} = {arg:::safe_macro_arg})
     ]
 ))
-# TODO: Rewrite with `not` pattern?
+
 FATAL_VIOLATIONS["unsafe-logging"] = Rule(
     "unsafe-logging",
-    "Unsafe logging statement. You must enclose variables and strings with `@safe(...)`.",
+    """
+    Unsafe logging statement. \
+    You must enclose variables and strings with `@safe(...)`.""",
     @pattern begin
         {log_macro:::log_macro}
-        @fail [:log_macro] begin
+        @when [:log_macro] begin
             for s in log_macro.args
                 c = Argus.SYNTAX_CLASS_REGISTRY[:safe_macro_arg]
-                is_successful(syntax_match(c, s)) || return false
+                is_successful(syntax_match(c, s)) || return true
             end
-            return true
-        end "log macro call with no unsafe args";
+            return false
+        end
     end
 )
 
@@ -199,28 +200,30 @@ register_syntax_class!(:assert_macro, SyntaxClass(
     [
         @pattern begin
             {m:::macrocall}
-            @fail [:m] begin
+            @when [:m] begin
                 assert_macro_names = r"@assert|@dassert"
-                !startswith(m.name, assert_macro_names)
-            end ""
+                startswith(m.name, assert_macro_names)
+            end
         end
     ]
 ))
 FATAL_VIOLATIONS["unsafe-assert"] = Rule(
     "unsafe-assert",
-    "Unsafe assertion statement. You must enclose the message with `@safe(...)`.",
+    """
+    Unsafe assertion statement. \
+    You must enclose the message with `@safe(...)`.""",
     @pattern begin
         {assert_macro:::assert_macro}
-        @fail [:assert_macro] begin
-            # Assert macro call with one argument is safe (the matching fails).
-            length(assert_macro.args) == 1 && return true
+        @when [:assert_macro] begin
+            # Assert macro call with one argument is safe.
+            length(assert_macro.args) == 1 && return false
             for s in assert_macro.args[2:end]
                 c = Argus.SYNTAX_CLASS_REGISTRY[:safe_macro_arg]
-                is_successful(syntax_match(c, s)) || return false
+                is_successful(syntax_match(c, s)) || return true
             end
             # All assert macro call arguments are safe.
-            return true
-        end "assert macro call with no unsafe args";
+            return false
+        end
     end
 )
 
@@ -236,8 +239,6 @@ FATAL_VIOLATIONS["show"] = Rule(
 )
 
 # NoinlineAndLiteralRule
-#
-# TODO: Splatting.
 register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
     "@nonline call with non lit or id args",
     [
@@ -247,7 +248,7 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                  @noinline(({_})({args}...)),
                  @noinline(({_}).({args}...)),
              )
-             @fail [:args] begin
+             @when [:args] begin
                  for s in args.src
                      k = kind(s)
                      k == K"parameters" && break
@@ -256,10 +257,10 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                          k == K"char" ||
                          k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
                          k == K"..." ||
-                         return false
+                         return true
                  end
-                 return true
-             end ""
+                 return false
+             end
          end),
         # Call or dotcall with kwargs.
         (@pattern begin
@@ -267,7 +268,7 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                  @noinline(({_})({args}...; {kwargs}...)),
                  @noinline(({_}).({args}...; {kwargs}...))
              )
-             @fail [:args, :kwargs] begin
+             @when [:args, :kwargs] begin
                  for s in args.src
                      k = kind(s)
                      JuliaSyntax.is_literal(s) ||
@@ -275,7 +276,7 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                          k == K"char" ||
                          k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
                          k == K"..." ||
-                         return false
+                         return true
                  end
                  for kws in kwargs.src
                      k = kind(kws)
@@ -286,15 +287,15 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                          k == K"..." ||
                          k == K"=" && (JuliaSyntax.is_literal(kws.children[2]) ||
                          JuliaSyntax.is_identifier(kws.children[2])) ||
-                         return false
+                         return true
                  end
-                 return true
-             end ""
+                 return false
+             end
          end),
         # Macrocall.
         (@pattern begin
              @noinline({c:::macrocall})
-             @fail [:c] begin
+             @when [:c] begin
                  for s in c.args
                      k = kind(s)
                      JuliaSyntax.is_literal(s) ||
@@ -302,16 +303,16 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                          k == JuliaSyntax.K"char" ||
                          k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
                          k == K"..." ||
-                         return false
+                         return true
                  end
-                 return true
-             end ""
+                 return false
+             end
          end),
         # Infix call.
         (@pattern begin
              ~or(@noinline({i:::infix_call}),
                  @noinline({i:::infix_dotcall}))
-             @fail [:i] begin
+             @when [:i] begin
                  # Check lhs.
                  s = i.lhs.src
                  k = kind(s)
@@ -320,7 +321,7 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                      k == K"char" ||
                      k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
                      k == K"..." ||
-                     return false
+                     return true
                  # Check rhs.
                  s = i.rhs.src
                  k = kind(s)
@@ -329,9 +330,9 @@ register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
                      k == K"char" ||
                      k == K"string" && all(c -> isa(c.data.val, String), s.children) ||
                      k == K"..." ||
-                     return false
-                 return true
-             end ""
+                     return true
+                 return false
+             end
          end)
     ]
 ))
@@ -352,21 +353,21 @@ register_syntax_class!(:do_call_with_return, SyntaxClass(
     [
         (@pattern begin
              {f:::funcall}
-             @fail [:f] begin
-                 isempty(f.args.src) && return true
+             @when [:f] begin
+                 isempty(f.args.src) && return false
                  do_node = f.args.src[end]
-                 return !(kind(do_node) == K"do" &&
-                     kind(do_node.children[2].children[end]) == K"return")
-             end ""
+                 return kind(do_node) == K"do" &&
+                     kind(do_node.children[2].children[end]) == K"return"
+             end
          end),
         (@pattern begin
              {m:::macrocall}
-             @fail [:m] begin
-                 isempty(m.args) && return true
+             @when [:m] begin
+                 isempty(m.args) && return false
                  do_node = m.args[end]
-                 return !(kind(do_node) == K"do" &&
-                     kind(do_node.children[2].children[end]) == K"return")
-             end ""
+                 return kind(do_node) == K"do" &&
+                     kind(do_node.children[2].children[end]) == K"return"
+             end
          end)
     ]
 ))

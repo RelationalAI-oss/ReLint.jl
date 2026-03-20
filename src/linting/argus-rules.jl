@@ -9,7 +9,7 @@ using Argus
 
     pre_check = @check [:files] begin
         file_names = map(s -> s.children[1].val, files.src)
-        if current_file() in file_names
+        if any(contains.(current_file(), file_names))
             skip_match()
         end
     end
@@ -54,8 +54,8 @@ RECOMMENDATIONS["return-type-annotation"] = Rule(
 VIOLATIONS = RuleGroup("violations")
 
 # TODO: Template for `@spawn`.
-VIOLATIONS["`@async`"] = Rule(
-    "`@async`",
+VIOLATIONS["@async"] = Rule(
+    "@async",
     "Use `@spawn` instead of `@async`.",
     @pattern ~or(@async({_}), Threads.@async({_}))
 )
@@ -90,12 +90,6 @@ VIOLATIONS["array with no specific type"] = Rule(
     )
 )
 
-VIOLATIONS["error"] = Rule(
-    "error",
-    "Use custom exception instead of the generic `error()`.",
-    @pattern error({_}...)
-)
-
 VIOLATIONS["in"] = Rule(
     "in",
     "Use `tin(item,collection)` instead of the Julia's `in` or `∈`.",
@@ -110,6 +104,85 @@ VIOLATIONS["haskey"] = Rule(
     "Use `thaskey(dict,key)` instead of the Julia's `haskey`.",
     @pattern haskey({_}, {_})
 )
+
+VIOLATIONS["remove_page"] = Rule(
+    "remove_page",
+    "`remove_page` should be used with extreme caution.",
+    @pattern remove_page({_}, {_})
+)
+
+VIOLATIONS["Task"] = Rule(
+    "Task",
+    "`Task` should be used with extreme caution.",
+    @pattern Task({_})
+)
+
+VIOLATIONS["ErrorException"] = Rule(
+    "ErrorException",
+    "Use custom exception instead of the generic `ErrorException`.",
+    (@pattern ErrorException({_}...)),
+    Dict(
+        :exclude_files => ["test.jl", "tests.jl", "bench/", "Vectorized/Test"]
+    )
+)
+
+VIOLATIONS["error"] = Rule(
+    "error",
+    "Use custom exception instead of the generic `error()`.",
+    (@pattern error({_}...)),
+    Dict(
+        :exclude_files => ["test.jl", "tests.jl", "bench/", "Vectorized/Test"]
+    )
+)
+
+register_syntax_class!(:unsafe_funcall, SyntaxClass(
+    "`unsafe_*` function call",
+    [
+        @pattern begin
+            {_f:::funcall}
+            @when [:_f] startswith(_f.fun_name.name, r"_?unsafe_")
+        end
+    ]
+))
+VIOLATIONS["unsafe_ function"] = Rule(
+    "unsafe_ function",
+    "An `unsafe_` function should be called only from an `unsafe_` function.",
+    @pattern ~and(
+        {_:::unsafe_funcall},
+        ~not(~inside(~or(
+            {_:::unsafe_funcall} = {_},
+            function ({_:::unsafe_funcall}) {_}... end
+        )))
+    )
+)
+
+# InRule
+
+# HasKeyRule
+
+# EqualRule
+
+# UvRule
+
+# UnreachableBranchRule
+
+# StringInterpolationRule
+
+# RelPathAPIUsageRule
+
+# UseOfStaticThreads
+
+# NoImportRule
+
+# NotImportingRAICodeRule
+
+# BareUsingRule
+
+# UntypedArrayComprehensionRule
+
+# ConstGlobalMissingTypeRule
+
+# NotFullyParametrizedConstructorRule
 
 # StringInterpolationRule
 # TODO: `trivia` flag.

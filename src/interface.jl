@@ -170,10 +170,14 @@ function lint_text(file_content_string::AbstractString; filename = "<string>", c
     lint_rule_reports = []
 
     # AST rules
-    for rule in context.rules_to_run
-        match_results = map(m -> m[1], rule_match(rule, ast).matches)
-        for match_result in match_results
-            push!(lint_rule_reports, Argus_result_to_LintRuleReport(rule, match_result))
+    match_results = rules_match(context.rules_to_run, ast)
+    # Remove refactorings.
+    for (rule_name, match_result) in match_results
+        successful_match_results = map(m -> m[1], match_result.matches)
+        rule =
+            context.rules_to_run[findfirst(r -> r.name == rule_name, context.rules_to_run)]
+        for m in successful_match_results
+            push!(lint_rule_reports, Argus_result_to_LintRuleReport(rule, m))
         end
     end
 

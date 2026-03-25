@@ -223,7 +223,6 @@
                             Line 2, column 5: An `unsafe_` function \
                             should be called only from an `unsafe_` function.""")
         end
-        # TODO: Disabling.
         let
             source = """
             function f()
@@ -237,6 +236,204 @@
             """
             @test !lint_has_error_test(source)
         end
+    end
+
+    @testset "in, equal, haskey, uv_" begin
+        source = """
+            function f()
+                x = 10 in [10]
+                y = in(10, [10])
+                z = equal(10, "hello")
+                w = haskey(Dict(1=>1000), 1)
+                a = uv_foo(10, 20)
+                b = ∈(10, [10])
+                c = 10 ∈ [10]
+
+                # No error
+                d = [x for x in 1:10]
+                groupby_vars = [v for v in child_vars if !tin(v, sort_input.vars)]
+            end
+            """
+        @test count_lint_errors(source) == 7
+        @test lint_test(source,
+                        """
+                        Line 2, column 9: Use `tin(item,collection)` instead of \
+                        the Julia's `in`""")
+        @test lint_test(source,
+                        """
+                        Line 3, column 9: Use `tin(item,collection)` instead of \
+                        the Julia's `in`""")
+        @test lint_test(source,
+                        """
+                        Line 4, column 9: Use `tequal(dict,key)` instead of the \
+                        Julia's `equal`.""")
+        @test lint_test(source,
+                        """
+                        Line 5, column 9: Use `thaskey(dict,key)` instead of the \
+                        Julia's `haskey`.""")
+        @test lint_test(source,
+                        """
+                        Line 6, column 9: `uv_` functions should be used with \
+                        extreme caution.""")
+        @test lint_test(source,
+                        """
+                        Line 7, column 9: Use `tin(item,collection)` instead of \
+                        the Julia's `in` or `∈`.""")
+        @test lint_test(source,
+                        """
+                        Line 8, column 9: Use `tin(item,collection)` instead of \
+                        the Julia's `in` or `∈`.""")
+    end
+
+    @testset "Unreachable branch" begin
+        let
+            source = """
+            function f(x)
+                if x == 1
+                    return 12
+                elseif x== 2
+                    return "Reachable_branch"
+                end
+            end
+            """
+            @test !lint_has_error_test(source)
+        end
+        let
+            source = """
+            function f(x)
+                if x == 1
+                    return 12
+                elseif x== 1
+                    return "Unreachable_branch"
+                end
+            end
+            """
+            @test lint_test(source, "Line 2, column 5: Unreachable branch.")
+        end
+        let
+            source = """
+            function f(x)
+                if x <= 1
+                    return 12
+                elseif x <= 1
+                    return "Unreachable_branch"
+                end
+                if x <= 1
+                    return 12
+                elseif x
+                    if cond1
+                       body1
+                    elseif cond2
+                       body2
+                    elseif cond1
+                        body3
+                    else
+                        body4
+                    end
+                end
+            end
+            """
+            @test count_lint_errors(source) == 2
+            @test lint_test(source, "Line 2, column 5: Unreachable branch.")
+            @test lint_test(source, "Line 10, column 9: Unreachable branch.")
+        end
+    end
+
+    @testset "Checking string interpolation" begin
+        source_with_error = raw"""
+        @INFO "($a.b.c)"
+        @INFO "$a.b.c"
+        @INFO "this string contains an error $a.b indeed!"
+        @INFO "this string contains an error $a .b.c indeed!"
+        @INFO "Test $test..."
+        Bla("bla/$blu",  read(joinpath(@__DIR__, "bla", "$blu.bli"), String))
+        path = "$dir/$name.csv"
+        """
+        @test count_lint_errors(source_with_error) == 9
+        @test lint_test(source_with_error, raw"Line 1, column 7: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 2, column 7: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 3, column 7: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 4, column 7: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 5, column 7: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 6, column 5: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 6, column 49: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 7, column 8: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 7, column 8: Use $(x) instead of $x.")
+
+        source_without_error = raw"""
+        @INFO "$(a.b.c)"
+        @INFO "this string contains an error $(a.b.c) indeed!"
+        f = "bla-$(blu).pb.gz"
+        """
+        @test count_lint_errors(source_without_error) == 0
+    end
+
+    @testset "RelPath front-end" begin
+        source = """
+        function rel_sig_from_relpath(path)
+            (name, types) = split_path(path)
+            return RelationSignature(name, types.elements)
+        end
+
+        function interpret(x, y, path)
+            rest = drop_first(path)
+            return RelPath(rest.elements[2:end])
+        end
+
+        function reverse(decl::EdbDecl)
+            return relpath_from_signature(decl.signature)
+        end
+
+        function use_path(x, y::RelPath, z)
+            return y.elements
+        end
+        """
+
+        @test count_lint_errors(source; directory="/src/Compiler/Front") == 5
+        @test count_lint_errors(source; directory="") == 0
+
+        @test lint_test(source,
+                        """
+                        Line 2, column 21: Usage of `RelPath` API method `split_path` is \
+                        not allowed in this context.""";
+                        directory="/src/Compiler/Front")
+    end
+
+    @testset "Use of static threads" begin
+        source = raw"""
+        function f()
+            Threads.@threads :static for _ in 1:10
+                println("foo")
+            end
+
+            @threads :static for _ in 1:10
+                println("foo")
+            end
+
+            Threads.@threads :dynamic for _ in 1:10
+                println("foo")
+            end
+        end
+        """
+        @test lint_test(source,
+                        """
+                        Line 2, column 5: Use `Threads.@threads :dynamic` instead of \
+                        `Threads.@threads :static`.""")
+        @test lint_test(source,
+                        """
+                        Line 6, column 5: Use `Threads.@threads :dynamic` instead of \
+                        `Threads.@threads :static`.""")
+    end
+
+    @testset "Forbid import" begin
+        source = """
+        import foobar
+        import M: a
+        import N: a, b
+
+        using M
+        """
+        @test count_lint_errors(source) == 3
     end
 
 end

@@ -20,9 +20,9 @@ Argus_result_to_LintRuleReport(rule::Rule, bindings::BindingSet) =
     LintRuleReport(rule,
                    rule.description,
                    "",
-                   bindings.file_name,
-                   bindings.source_location[1],
-                   bindings.source_location[2],
+                   JuliaSyntax.filename(bindings),
+                   JuliaSyntax.source_location(bindings)[1],
+                   JuliaSyntax.source_location(bindings)[2],
                    false,
                    0)
 

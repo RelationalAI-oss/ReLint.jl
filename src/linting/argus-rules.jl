@@ -90,21 +90,6 @@ VIOLATIONS["array with no specific type"] = Rule(
     )
 )
 
-VIOLATIONS["in"] = Rule(
-    "in",
-    "Use `tin(item,collection)` instead of the Julia's `in` or `∈`.",
-    @pattern ~or(
-        in({_}, {_}),
-        ∈({_}, {_})
-    )
-)
-
-VIOLATIONS["haskey"] = Rule(
-    "haskey",
-    "Use `thaskey(dict,key)` instead of the Julia's `haskey`.",
-    @pattern haskey({_}, {_})
-)
-
 VIOLATIONS["remove_page"] = Rule(
     "remove_page",
     "`remove_page` should be used with extreme caution.",
@@ -156,23 +141,152 @@ VIOLATIONS["unsafe_ function"] = Rule(
     )
 )
 
-# InRule
+VIOLATIONS["in"] = Rule(
+    "in",
+    "Use `tin(item,collection)` instead of the Julia's `in` or `∈`.",
+    @pattern ~or(
+        in({_}, {_}),
+        ∈({_}, {_})
+    )
+)
 
-# HasKeyRule
+VIOLATIONS["haskey"] = Rule(
+    "haskey",
+    "Use `thaskey(dict,key)` instead of the Julia's `haskey`.",
+    @pattern haskey({_}, {_})
+)
 
-# EqualRule
+VIOLATIONS["equal"] = Rule(
+    "equal",
+    "Use `tequal(dict,key)` instead of the Julia's `equal`.",
+    @pattern equal({_}, {_})
+)
 
-# UvRule
+VIOLATIONS["uv"] = Rule(
+    "uv",
+    "`uv_` functions should be used with extreme caution.",
+    @pattern ~and(
+        {f:::funcall},
+        ~when([:f], startswith(f.fun_name.name, "uv_"))
+    )
+)
 
-# UnreachableBranchRule
+# TODO: Find a way to express this in its most general form. Something like:
+#
+# @pattern ~or(
+#     if {cond}
+#         {_}...
+#     (elseif {_} {_}...)...
+#     elseif {cond}
+#         {_}...
+#     end,
+#     if {cond}
+#         {_}...
+#     (elseif {_} {_}...)...
+#     elseif {cond}
+#         {_}...
+#     else
+#         {_}...
+#     end
+VIOLATIONS["unreachable branch"] = Rule(
+    "unreachable branch",
+    "Unreachable branch.",
+    @pattern ~or(
+        if {cond}
+            {_}...
+        elseif {cond}
+            {_}...
+        end,
+        if {cond}
+            {_}...
+        elseif {cond}
+            {_}...
+        else
+            {_}...
+        end,
+        if {cond}
+            {_}...
+        elseif {_}
+            {_}...
+        elseif {cond}
+            {_}...
+        end,
+        if {cond}
+            {_}...
+        elseif {_}
+            {_}...
+        elseif {cond}
+            {_}...
+        else
+            {_}...
+        end
+    )
+)
 
-# StringInterpolationRule
+VIOLATIONS["string interpolation"] = Rule(
+    "string interpolation",
+    "Use \$(x) instead of \$x.",
+    @pattern ~and(
+        "$({_}...)$({x:::identifier})$({_}...)",
+        ~when([:x], !inside_parens(x.src))
+    )
+)
 
-# RelPathAPIUsageRule
+VIOLATIONS["RelPath"] = Rule(
+    "RelPath",
+    "Usage of type `RelPath` is not allowed in this context.",
+    (@pattern ~or(
+        {_}::RelPath,
+        RelPath({_}),
+        RelPath({_}, {_})
+    )),
+    Dict(
+        :only_in_dir => "src/Compiler/Front"
+    )
+)
+VIOLATIONS["RelPath split_path"] = Rule(
+    "RelPath split_path",
+    "Usage of `RelPath` API method `split_path` is not allowed in this context.",
+    (@pattern split_path({_})),
+    Dict(
+        :only_in_dir => "src/Compiler/Front"
+    )
+)
+VIOLATIONS["RelPath drop_first"] = Rule(
+    "RelPath drop_first",
+    "Usage of `RelPath` API method `drop_first` is not allowed in this context.",
+    (@pattern drop_first({_})),
+    Dict(
+        :only_in_dir => "src/Compiler/Front"
+    )
+)
+VIOLATIONS["RelPath relpath_from_signature"] = Rule(
+    "RelPath relpath_from_signature",
+    """
+    Usage of `RelPath` API method `relpath_from_signature` is not allowed \
+    in this context.""",
+    (@pattern relpath_from_signature({_})),
+    Dict(
+        :only_in_dir => "src/Compiler/Front"
+    )
+)
 
-# UseOfStaticThreads
+VIOLATIONS["static threads"] = Rule(
+    "static threads",
+    """
+    Use `Threads.@threads :dynamic` instead of `Threads.@threads :static`. Static threads \
+    must not be used as generated tasks will not be able to migrate across threads.""",
+    @pattern ~or(
+        (@threads :static {_}...),
+        Threads.@threads :static {_}...
+    )
+)
 
-# NoImportRule
+VIOLATIONS["no import"] = Rule(
+    "no import",
+    "Imports must be specified with `using` and not `import`.",
+    @pattern {_:::import}
+)
 
 # NotImportingRAICodeRule
 
@@ -183,14 +297,6 @@ VIOLATIONS["unsafe_ function"] = Rule(
 # ConstGlobalMissingTypeRule
 
 # NotFullyParametrizedConstructorRule
-
-# StringInterpolationRule
-# TODO: `trivia` flag.
-# VIOLATIONS["string-interpolation"] = Rule(
-#     "string-interpolation",
-#     raw"Use $(x) instead of $x ([explanation](https://github.com/RelationalAI/RAIStyle?tab=readme-ov-file#string-interpolation)).",
-#     @pattern ...
-# )
 
 # Fatal rules
 # ===========

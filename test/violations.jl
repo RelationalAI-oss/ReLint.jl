@@ -224,19 +224,19 @@
                             should be called only from an `unsafe_` function.""")
         end
         # TODO: Disabling.
-        # let
-        #     source = """
-        #     function f()
-        #         # lint-disable-next-line
-        #         _unsafe_g()
-        #     end
+        let
+            source = """
+            function f()
+                # lint-disable-next-line
+                _unsafe_g()
+            end
 
-        #     function _unsafe_g()
-        #         return 42
-        #     end
-        #     """
-        #     @test !lint_has_error_test(source)
-        # end
+            function _unsafe_g()
+                return 42
+            end
+            """
+            @test !lint_has_error_test(source)
+        end
     end
 
 end

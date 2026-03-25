@@ -164,13 +164,10 @@ function lint_text(file_content_string::AbstractString; filename = "<string>", c
     ast = Argus._normalise!(ast)
     all_lines = split(file_content_string, "\n")
 
-    # TODO: Integrate markers in Argus rules.
-    markers::Dict{Symbol, String} = Dict(:filename => filename)
-
     lint_rule_reports = []
 
     # AST rules
-    match_results = rules_match(context.rules_to_run, ast)
+    match_results = rules_match(context.rules_to_run, ast; disabler=relint_disabler)
     # Remove refactorings.
     for (rule_name, match_result) in match_results
         successful_match_results = map(m -> m[1], match_result.matches)
@@ -206,6 +203,29 @@ function lint_text(file_content_string::AbstractString; filename = "<string>", c
     return lint_rule_reports
 end
 get_all_lines_from_filename(filename::String) = open(io -> readlines(io), filename)
+
+struct ReLintDisabler <: CommentDisabler end
+const relint_disabler = ReLintDisabler()
+
+relint_disabler(line::AbstractString) = is_disable_all_comment(line)
+function relint_disabler(rule::Rule, line::AbstractString)
+    is_disable_comment(line) || return false
+    is_disable_all_comment(line) && return true
+    is_disable_rule_comment(line, rule) && return true
+    return false
+end
+is_disable_comment(str::AbstractString) =
+    startswith(str, "# lint-disable-next-line")
+is_disable_all_comment(str::AbstractString) = str == "# lint-disable-next-line"
+function is_disable_rule_comment(str::AbstractString, rule::Rule)
+    is_disable_comment(str) || return false
+    split_command_from_rules = split(str, ":")
+    length(split_command_from_rules) == 2 || return false
+    rules_list = strip.(split(split_command_from_rules[2], ","))
+    rule.name in rules_list && return true
+    # Allow disabling by rule description as well.
+    return startswith(rule.description, lstrip(split_command_from_rules[2]))
+end
 
 # Return (index_line, index_column, annotation) for a given offset in a source
 # Useful in tests?

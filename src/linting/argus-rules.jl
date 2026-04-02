@@ -288,9 +288,26 @@ VIOLATIONS["no import"] = Rule(
     @pattern {_:::import}
 )
 
-# NotImportingRAICodeRule
+VIOLATIONS["no import RAICode"] = Rule(
+    "no import RAICode",
+    "Importing RAICode should be avoided (when possible).",
+    @pattern begin
+        {u:::using}
+        @when [:u] u.module_name.name == "RAICode"
+    end
+)
 
-# BareUsingRule
+VIOLATIONS["bare using"] = Rule(
+    "bare using",
+    "Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.",
+    (@pattern begin
+         {u:::using}
+         @when [:u] isempty(u.ids.src)
+     end),
+    Dict(
+        :exclude_files => ["test/", "test.jl"]
+    )
+)
 
 # UntypedArrayComprehensionRule
 

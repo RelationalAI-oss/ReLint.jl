@@ -434,9 +434,80 @@
         import M: a
         import N: a, b
 
-        using M
+        using M: a
         """
         @test count_lint_errors(source) == 3
+    end
+
+    @testset "Forbid using RAICode" begin
+        source = """
+        using RAICode
+        using RAICode: rai_rules_tests
+
+        println("hello world")
+        """
+        @test count_lint_errors(source) == 3  # One extra from base `using`.
+    end
+
+    @testset "Forbid bare using" begin
+        let
+            source = """
+            using LinearAlgebra
+            """
+            @test lint_has_error_test(source)
+            @test lint_test(source,
+                            """
+                            Line 1, column 1: Use `using Foo: Foo` or \
+                            `using Foo: specific_function` instead of bare `using Foo`.""")
+        end
+        let
+            source = """
+            using Statistics
+            using LinearAlgebra
+            """
+            @test count_lint_errors(source) == 2
+            @test lint_test(source,
+                            """
+                            Line 1, column 1: Use `using Foo: Foo` or \
+                            `using Foo: specific_function` instead of bare `using Foo`.""")
+            @test lint_test(source,
+                            """
+                            Line 2, column 1: Use `using Foo: Foo` or \
+                            `using Foo: specific_function` instead of bare `using Foo`.""")
+        end
+        let
+            source = """
+            using LinearAlgebra: LinearAlgebra
+            """
+            @test !lint_has_error_test(source)
+        end
+        let
+            source = """
+            using Statistics: mean, std
+            using LinearAlgebra: norm, dot
+            """
+            @test !lint_has_error_test(source)
+        end
+        let
+            source = """
+            using LinearAlgebra
+            using Statistics: mean, std
+            using Base: show
+            """
+            @test count_lint_errors(source) == 1
+            @test lint_test(source,
+                            """
+                            Line 1, column 1: Use `using Foo: Foo` or \
+                            `using Foo: specific_function` instead of bare `using Foo`.""")
+        end
+        let
+            source = """
+            using Test
+            using LinearAlgebra
+            """
+            # Note: This will only pass when running on a file with "test" in the path
+            @test !lint_has_error_test(source; directory = "test/")
+        end
     end
 
 end

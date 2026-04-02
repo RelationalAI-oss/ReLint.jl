@@ -348,8 +348,9 @@
         @INFO "Test $test..."
         Bla("bla/$blu",  read(joinpath(@__DIR__, "bla", "$blu.bli"), String))
         path = "$dir/$name.csv"
+        cmd = `bla $blu bli`
         """
-        @test count_lint_errors(source_with_error) == 9
+        @test count_lint_errors(source_with_error) == 10
         @test lint_test(source_with_error, raw"Line 1, column 7: Use $(x) instead of $x.")
         @test lint_test(source_with_error, raw"Line 2, column 7: Use $(x) instead of $x.")
         @test lint_test(source_with_error, raw"Line 3, column 7: Use $(x) instead of $x.")
@@ -359,11 +360,13 @@
         @test lint_test(source_with_error, raw"Line 6, column 49: Use $(x) instead of $x.")
         @test lint_test(source_with_error, raw"Line 7, column 8: Use $(x) instead of $x.")
         @test lint_test(source_with_error, raw"Line 7, column 8: Use $(x) instead of $x.")
+        @test lint_test(source_with_error, raw"Line 8, column 7: Use $(x) instead of $x.")
 
         source_without_error = raw"""
         @INFO "$(a.b.c)"
         @INFO "this string contains an error $(a.b.c) indeed!"
         f = "bla-$(blu).pb.gz"
+        cmd = `bla $(blu) bli`
         """
         @test count_lint_errors(source_without_error) == 0
     end

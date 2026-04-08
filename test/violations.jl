@@ -340,7 +340,7 @@
         end
     end
 
-    @testset "Checking string interpolation" begin
+    @testset "String interpolation" begin
         source_with_error = raw"""
         @INFO "($a.b.c)"
         @INFO "$a.b.c"

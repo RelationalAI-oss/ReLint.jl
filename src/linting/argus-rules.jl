@@ -568,8 +568,8 @@ VIOLATIONS["not fully parametrised constructor"] = Rule(
 FATAL_VIOLATIONS = RuleGroup("fatal violations")
 
 # GeneratedRule
-FATAL_VIOLATIONS["generated"] = Rule(
-    "generated",
+FATAL_VIOLATIONS["@generated"] = Rule(
+    "@generated",
     "`@generated` should be used with extreme caution.",
     @pattern @generated {_}...
 )
@@ -669,8 +669,6 @@ FATAL_VIOLATIONS["unsafe-assert"] = Rule(
         end
     end
 )
-
-# NonFrontShapeAPIUsageRule
 
 # MustNotUseShow
 #

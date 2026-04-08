@@ -26,7 +26,9 @@ abstract type FatalLintRule <: ASTLintRule end
 include("text_lint_rules.jl")
 
 function all_rules()
-    return [values(RECOMMENDATIONS)...,
-            values(VIOLATIONS)...,
-            values(FATAL_VIOLATIONS)...]
+    return [
+        values(RECOMMENDATIONS)...,
+        values(VIOLATIONS)...,
+        values(FATAL_VIOLATIONS)...
+    ]
 end

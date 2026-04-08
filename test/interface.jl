@@ -14,72 +14,6 @@
 
 end
 
-@testset "Formatter" begin
-    source = """
-           const x = Threads.nthreads()
-           function f()
-               return x
-           end
-           """
-
-    @testset "Plain 02" begin
-        io = IOBuffer()
-        run_lint_on_text(source; io=io)
-        result = String(take!(io))
-
-        expected = r"""
-            ---------- \H+
-            Line 1, column 1: `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
-            1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
-            ----------
-            """
-        @test !isnothing(match(expected, result))
-    end
-
-    @testset "Markdown 02" begin
-        io = IOBuffer()
-        run_lint_on_text(source; io=io, formatter=MarkdownFormat())
-        result = String(take!(io))
-
-        expected = r"""
-             - \*\*Line 1, column 1:\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
-            """
-        @test !isnothing(match(expected, result))
-    end
-
-    @testset "Markdown 03 - with github information" begin
-        formatter = MarkdownFormat("axb-example-with-lint-errors", "RelationalAI/raicode")
-        io = IOBuffer()
-
-        run_lint_on_text(
-            source;
-            io,
-            formatter,
-            directory="/src/Compiler/")
-        result = String(take!(io))
-
-        expected = r"""
-             - \*\*\[Line 1, column 1:\]\(https://github\.com/RelationalAI/raicode/blob/axb-example-with-lint-errors/\H+/src/Compiler/tmp_julia_file\.jl#L1\)\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
-            """
-        @test !isnothing(match(expected, result))
-    end
-
-    @testset "Markdown 04 - with github information" begin
-        formatter = MarkdownFormat("axb-example-with-lint-errors", "RelationalAI/raicode")
-        io = IOBuffer()
-        run_lint_on_text(
-            source;
-            io,
-            formatter,
-            directory="src/Compiler/")
-        result = String(take!(io))
-        expected = r"""
-             - \*\*\[Line 1, column 1:\]\(https://github\.com/RelationalAI/raicode/blob/axb-example-with-lint-errors/\H+/src/Compiler/tmp_julia_file\.jl#L1\)\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
-            """
-        @test !isnothing(match(expected, result))
-    end
-end
-
 @testset "Run several times on same file" begin
     mktempdir() do dir
         open(joinpath(dir, "foo.jl"), "w") do io
@@ -658,6 +592,126 @@ end
     end
 end
 
+@testset "File exclusion" begin
+    using ReLint: extract_file_exclusions_from_precommit_file, LintFileExclusion
+
+    filename = "precommit-config-fortesting.yaml"
+    precommit_full_path = joinpath(dirname(@__FILE__), filename)
+    if !isfile(precommit_full_path)
+        precommit_full_path = joinpath(dirname(@__FILE__), "test", filename)
+    end
+    @test isfile(precommit_full_path)
+
+    @testset "Pre-commit file" begin
+        # Test the extraction of file exclusions from a pre-commit file.
+        expected_reg_exs = [
+            "test.jl",
+            "src/version.jl",
+            "packages/jet_test_utils.jl",
+            "src/Test/jcompile-stats.jl",
+            "src/Test/integration.jl",
+            "build/.*",
+            ".github/.*",
+            "packages/RAI_Benchmarks/.*",
+            "test_cloud/.*",
+            "packages/Arroyo/bench/.*",
+            "contrib/.*",
+            "packages/RAI_Snoop/.*",
+            "packages/Salsa/examples/.*",
+            "test_spcs/.*",
+            "test/.*",
+            "bench/.*",
+            "scripts/.*",
+            "skaffold/.*",
+        ]
+        exclusions = extract_file_exclusions_from_precommit_file(precommit_full_path)
+        reg_exs = map(l->l.regex, exclusions)
+        @test all(l->l isa LintFileExclusion, exclusions)
+        @test reg_exs == expected_reg_exs
+    end
+
+    @testset "Two files with errors" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "test.jl"), "w") do io1
+                open(joinpath(dir, "bar.jl"), "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\nend\n")
+                    write(io2, "function g()\n      @async 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    re = extract_file_exclusions_from_precommit_file(precommit_full_path)
+                    context = LintContext(ReLint.all_rules(), re)
+
+                    # Run the linter on the directory
+                    str = IOBuffer()
+                    ReLint.run_lint(
+                        dir;
+                        io=str,
+                        formatter=ReLint.MarkdownFormat(),
+                        context,
+                    )
+
+                    result = String(take!(str))
+
+                    # Only one of the files is linted
+                    expected = r"""
+                         - \*\*Line 2, column 7:\*\* Use `@spawn` instead of `@async`\. \H+
+                        """
+
+                    result_matching = !isnothing(match(expected, result))
+                    result_matching || @info "DEBUG: $(result)"
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Generating report" begin
+        local result_matching = false
+
+        mktempdir() do dir
+            file1_name = joinpath(dir, "test.jl")
+            file2_name = joinpath(dir, "bar.jl")
+
+            open(file1_name, "w") do io1
+                open(file2_name, "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\nend\n")
+                    write(io2, "function g()\n      @async 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    re = extract_file_exclusions_from_precommit_file(precommit_full_path)
+                    context = LintContext(ReLint.all_rules(), re)
+
+                    # Run the linter on the directory
+                    output_file = tempname()
+                    ReLint.generate_report(
+                        [file1_name, file2_name],
+                        output_file;
+
+                        json_filename=tempname(),
+                        stream_workflowcommand=devnull,
+                        pre_commit_file=precommit_full_path)
+
+                    result = open(output_file, "r") do io read(io, String) end
+
+                    # Only one of the files is linted
+                    expected = r"""
+                         - \*\*Line 2, column 7:\*\* Use `@spawn` instead of `@async`\. \H+
+                        """
+
+                    result_matching = !isnothing(match(expected, result))
+                    result_matching || @info "DEBUG: $(result)"
+                end
+            end
+        end
+        @test result_matching
+    end
+end
+
 @testset "Locally disabling lint" begin
     @testset "lint-disable-next-line" begin
         @test !lint_has_error_test("""
@@ -788,29 +842,6 @@ end
     end
 end
 
-@testset "Relaxing unused bindings" begin
-    # @test lint_test("""
-    #        function f(a::Int64, b, c)
-    #            local x
-    #            return 42
-    #        end
-    #        """, "Line 2, column 11: Variable has been assigned but not used")
-
-    @test !lint_has_error_test("""
-           function f(a::Int64, b, c)
-               local _
-               return 42
-           end
-           """)
-
-    @test !lint_has_error_test("""
-           function f(a::Int64, b, c)
-               local _x
-               return 42
-           end
-           """)
-end
-
 @testset "Recommentation separated from violations" begin
     source = """
     function f()
@@ -928,4 +959,70 @@ end
     io = IOBuffer()
     print_report(PreCommitFormat(), io, lint_report, result)
     @test String(take!(io)) == "Line 0, column 0: error \n"
+end
+
+@testset "Formatter" begin
+    source = """
+           const x = Threads.nthreads()
+           function f()
+               return x
+           end
+           """
+
+    @testset "Plain 02" begin
+        io = IOBuffer()
+        run_lint_on_text(source; io=io)
+        result = String(take!(io))
+
+        expected = r"""
+            ---------- \H+
+            Line 1, column 1: `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
+            ----------
+            """
+        @test !isnothing(match(expected, result))
+    end
+
+    @testset "Markdown 02" begin
+        io = IOBuffer()
+        run_lint_on_text(source; io=io, formatter=MarkdownFormat())
+        result = String(take!(io))
+
+        expected = r"""
+             - \*\*Line 1, column 1:\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            """
+        @test !isnothing(match(expected, result))
+    end
+
+    @testset "Markdown 03 - with github information" begin
+        formatter = MarkdownFormat("axb-example-with-lint-errors", "RelationalAI/raicode")
+        io = IOBuffer()
+
+        run_lint_on_text(
+            source;
+            io,
+            formatter,
+            directory="/src/Compiler/")
+        result = String(take!(io))
+
+        expected = r"""
+             - \*\*\[Line 1, column 1:\]\(https://github\.com/RelationalAI/raicode/blob/axb-example-with-lint-errors/\H+/src/Compiler/tmp_julia_file\.jl#L1\)\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            """
+        @test !isnothing(match(expected, result))
+    end
+
+    @testset "Markdown 04 - with github information" begin
+        formatter = MarkdownFormat("axb-example-with-lint-errors", "RelationalAI/raicode")
+        io = IOBuffer()
+        run_lint_on_text(
+            source;
+            io,
+            formatter,
+            directory="src/Compiler/")
+        result = String(take!(io))
+        expected = r"""
+             - \*\*\[Line 1, column 1:\]\(https://github\.com/RelationalAI/raicode/blob/axb-example-with-lint-errors/\H+/src/Compiler/tmp_julia_file\.jl#L1\)\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            """
+        @test !isnothing(match(expected, result))
+    end
 end

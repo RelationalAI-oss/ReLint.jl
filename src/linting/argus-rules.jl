@@ -309,11 +309,70 @@ VIOLATIONS["bare using"] = Rule(
     )
 )
 
-# UntypedArrayComprehensionRule
+VIOLATIONS["untyped array comprehension"] = Rule(
+    "untyped array comprehension",
+    """
+    Need a specific Array type to be provided. \
+    Use `T[x for x in xs]` instead of `[x for x in xs]`.""",
+    (@pattern [{_} for {_} in {_}]),
+    Dict(
+        :only_in_dir => "src/Compiler/"
+    )
+)
 
-# ConstGlobalMissingTypeRule
+register_syntax_class!(:const, SyntaxClass(
+    "const assignment",
+    [
+        (@pattern const {_} = {_}),
+        (@pattern const global {_} = {_})
+    ]
+))
+VIOLATIONS["non-const global"] = Rule(
+    "non-const global",
+    """
+    Global variable must have type annotation: `global x::Type = value`. \
+    Use `const` for immutable globals.""",
+    (@pattern ~and(
+        :(global {_:::identifier} = {_}),
+        ~not(~inside({_:::const}, 1))
+    )),
+    Dict(
+        :exclude_files => ["test/", "test.jl"]
+    )
+)
 
-# NotFullyParametrizedConstructorRule
+register_syntax_class!(:loop, SyntaxClass(
+    "`for` or `while` loop",
+    [
+        (@pattern (for {_} in {_}
+            {_}...
+        end)),
+        (@pattern (for {_} = {_}
+            {_}...
+        end)),
+        (@pattern (for {_} ∈ {_}
+            {_}...
+        end)),
+        (@pattern while {_}
+            {_}...
+        end)
+    ]
+))
+VIOLATIONS["not fully parametrised constructor"] = Rule(
+    "not fully parametrised constructor",
+    """
+    Avoid not-fully-parameterized constructor in loops. \
+    Use a maker function instead for better performance.""",
+    (@pattern ~and(
+        {id:::identifier}({_}...),
+        ~inside({_:::loop}),
+        ~when([:id], startswith(id.name, r"[A-Z]"))
+    )),
+    Dict(
+        :only_in_dir => "src/Compiler",
+        :exclude_files => ["test/", "test.jl"]
+    )
+)
 
 # Fatal rules
 # ===========

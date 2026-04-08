@@ -510,4 +510,199 @@
         end
     end
 
+    @testset "Untyped array comprehensions" begin
+        let
+            source = """
+            function f()
+                x = [i for i in 1:10]
+                return x
+            end
+            """
+            @test lint_test(source,
+                            "Line 2, column 9: Need a specific Array type to be provided.";
+                            directory = "src/Compiler/")
+        end
+        let
+            source = """
+            function f()
+                x = Int[i for i in 1:10]
+                return x
+            end
+            """
+            @test count_lint_errors(source; directory = "src/Compiler/") == 0
+        end
+        let
+            source = """
+            function f()
+                x = [i for i in 1:10]
+                return x
+            end
+            """
+            @test count_lint_errors(source; directory = "src/Other/") == 0
+        end
+        let
+            source = """
+            function f()
+                x = [i for i in 1:10]
+                y = String[string(i) for i in 1:10]
+                return (x, y)
+            end
+            """
+            @test count_lint_errors(source; directory = "src/Compiler/") == 1
+            @test lint_test(source,
+                            "Line 2, column 9: Need a specific Array type to be provided.";
+                            directory = "src/Compiler/")
+        end
+    end
+
+    @testset "Non const global variables" begin
+        let
+            source = """
+            global counter = 0
+            """
+            @test lint_has_error_test(source)
+            @test lint_test(source,
+                            "Line 1, column 1: Global variable must have type annotation")
+        end
+        let
+            source = """
+            const global MAX_SIZE = 100
+            """
+            @test !lint_has_error_test(source)
+        end
+        let
+            source = """
+            function f()
+                x = 10
+                return x
+            end
+            """
+            @test !lint_has_error_test(source)
+        end
+        let
+            source = """
+            global x = 1
+            global y = 2
+            const z = 3
+            const global q = 3
+            global yy::Int = 2
+            """
+            @test count_lint_errors(source) == 2
+            @test lint_test(source,
+                            "Line 1, column 1: Global variable must have type annotation")
+            @test lint_test(source,
+                            "Line 2, column 1: Global variable must have type annotation")
+        end
+    end
+
+    @testset "NotFullyParameterizedConstructorRule" begin
+        let
+            source = """
+            function process(columns_list)
+                results = []
+                for columns in columns_list
+                    push!(results, ColumnarVector(columns))
+                end
+                return results
+            end
+            """
+            @test lint_test(source,
+                            """
+                            Line 4, column 24: \
+                            Avoid not-fully-parameterized constructor in loops""";
+                            directory="src/Compiler/")
+        end
+        let
+            source = """
+            function process(data_list)
+                outputs = []
+                for data in data_list
+                    push!(outputs, Vector(data))
+                end
+                return outputs
+            end
+            """
+            @test lint_test(source,
+                            """
+                            Line 4, column 24: \
+                            Avoid not-fully-parameterized constructor in loops""";
+                            directory="src/Compiler/")
+        end
+        let
+            source = """
+            function build_dicts(items)
+                results = []
+                i = 1
+                while i <= length(items)
+                    push!(results, Dict(items[i]))
+                    i += 1
+                end
+                return results
+            end
+            """
+            @test lint_test(source,
+                            """
+                            Line 5, column 24: \
+                            Avoid not-fully-parameterized constructor in loops""";
+                            directory="src/Compiler/")
+        end
+        let
+            source = """
+            function process(columns_list)
+                results = Vector{ColumnarVector{Int,Vector{Int}}}()
+                for columns in columns_list
+                    push!(results, ColumnarVector{Int,Vector{Int}}(columns))
+                end
+                return results
+            end
+            """
+            @test !lint_has_error_test(source; directory="src/Compiler/")
+        end
+        let
+            source = """
+            function process(columns_list)
+                results = Any[]
+                for columns in columns_list
+                    push!(results, make_columnar_vector(columns))
+                end
+                return results
+            end
+            """
+            @test !lint_has_error_test(source; directory="src/Compiler/")
+        end
+        let
+            source = """
+            function process(columns)
+                return ColumnarVector(columns)
+            end
+            """
+            @test !lint_has_error_test(source; directory="src/Compiler/")
+        end
+        let
+            source = """
+            function process(columns_list)
+                results = T[]
+                for columns in columns_list
+                    push!(results, ColumnarVector(columns))
+                end
+                return results
+            end
+            """
+            # Should not trigger outside src/Compiler/.
+            @test !lint_has_error_test(source; directory="src/API/")
+        end
+        let
+            source = """
+            function process(items)
+                results = Any[]
+                for item in items
+                    push!(results, process_item(item))
+                end
+                return results
+            end
+            """
+            @test !lint_has_error_test(source; directory="src/Compiler/")
+        end
+    end
+
 end

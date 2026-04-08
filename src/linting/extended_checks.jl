@@ -373,10 +373,9 @@ include("text_lint_rules.jl")
 
 const all_extended_rule_types = Ref{Vector{DataType}}(
     vcat(
-        # InteractiveUtils.subtypes(RecommendationLintRule),
+        InteractiveUtils.subtypes(RecommendationLintRule),
         InteractiveUtils.subtypes(ViolationLintRule),
         InteractiveUtils.subtypes(FatalLintRule),
-        ReturnTypeAnnotationRule,
     )
 )
 
@@ -389,7 +388,7 @@ const all_text_lint_rule_types = Ref{Vector{DataType}}(
 )
 
 function all_rules()
-    return vcat(all_extended_rule_types[])#, all_text_lint_rule_types[])
+    return vcat(all_extended_rule_types[], all_text_lint_rule_types[])
 end
 
 # template -> EXPR to be compared

@@ -102,7 +102,8 @@
                 f = []
             end
             """
-            count_errors = count_lint_errors(source; directory = "src/Compiler/")
+            context = ReLint.LintContext([ReLint.VIOLATIONS["array with no specific type"]])
+            count_errors = count_lint_errors(source; directory = "src/Compiler/", context)
             @test count_errors == 1
             @test lint_test(
                 source,
@@ -555,7 +556,7 @@
         end
     end
 
-    @testset "Non const global variables" begin
+    @testset "Non-const untyped global variables" begin
         let
             source = """
             global counter = 0

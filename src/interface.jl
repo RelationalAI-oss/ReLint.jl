@@ -654,7 +654,7 @@ function generate_report(
         file_prefix_to_remove::String = "",
         analyze_all_file_found_locally::Bool = false,
         stream_workflowcommand::IO = stdout,
-        rules_to_run::Vector{DataType} = all_extended_rule_types[],
+        rules_to_run::Vector{Rule} = all_rules(),
         pre_commit_file::String = "",
     )
     if isfile(output_filename)

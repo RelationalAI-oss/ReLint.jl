@@ -1,0 +1,931 @@
+@testset "offset to line" begin
+    source = """
+        function f()
+            return Threads.nthreads()
+        end
+        """
+    @test_throws BoundsError convert_offset_to_line(-1, source)
+    @test_throws BoundsError convert_offset_to_line(length(source) + 2, source)
+
+    @test convert_offset_to_line(10, source) == (1, 10, nothing)
+    @test convert_offset_to_line(20, source) == (2, 7, nothing)
+    @test convert_offset_to_line(42, source) == (2, 29, nothing)
+    @test convert_offset_to_line(46, source) == (3, 3, nothing)
+
+end
+
+@testset "Formatter" begin
+    source = """
+           const x = Threads.nthreads()
+           function f()
+               return x
+           end
+           """
+
+    @testset "Plain 02" begin
+        io = IOBuffer()
+        run_lint_on_text(source; io=io)
+        result = String(take!(io))
+
+        expected = r"""
+            ---------- \H+
+            Line 1, column 1: `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
+            ----------
+            """
+        @test !isnothing(match(expected, result))
+    end
+
+    @testset "Markdown 02" begin
+        io = IOBuffer()
+        run_lint_on_text(source; io=io, formatter=MarkdownFormat())
+        result = String(take!(io))
+
+        expected = r"""
+             - \*\*Line 1, column 1:\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            """
+        @test !isnothing(match(expected, result))
+    end
+
+    @testset "Markdown 03 - with github information" begin
+        formatter = MarkdownFormat("axb-example-with-lint-errors", "RelationalAI/raicode")
+        io = IOBuffer()
+
+        run_lint_on_text(
+            source;
+            io,
+            formatter,
+            directory="/src/Compiler/")
+        result = String(take!(io))
+
+        expected = r"""
+             - \*\*\[Line 1, column 1:\]\(https://github\.com/RelationalAI/raicode/blob/axb-example-with-lint-errors/\H+/src/Compiler/tmp_julia_file\.jl#L1\)\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            """
+        @test !isnothing(match(expected, result))
+    end
+
+    @testset "Markdown 04 - with github information" begin
+        formatter = MarkdownFormat("axb-example-with-lint-errors", "RelationalAI/raicode")
+        io = IOBuffer()
+        run_lint_on_text(
+            source;
+            io,
+            formatter,
+            directory="src/Compiler/")
+        result = String(take!(io))
+        expected = r"""
+             - \*\*\[Line 1, column 1:\]\(https://github\.com/RelationalAI/raicode/blob/axb-example-with-lint-errors/\H+/src/Compiler/tmp_julia_file\.jl#L1\)\*\* `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
+            """
+        @test !isnothing(match(expected, result))
+    end
+end
+
+@testset "Run several times on same file" begin
+    mktempdir() do dir
+        open(joinpath(dir, "foo.jl"), "w") do io
+            write(io, "function f()\n  @async 1 + 1\nend\n")
+            flush(io)
+
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+            @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+        end
+    end
+end
+
+@testset "Linting multiple files" begin
+    @testset "No errors" begin
+        local result_is_empty = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar.jl"), "w") do io2
+                    write(io1, "function f()\n  @spawn 1 + 1\nend\n")
+                    write(io2, "function g()\n  @spawn 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
+                    result = String(take!(str))
+                    result_is_empty = isempty(result)
+                end
+            end
+        end
+        @test result_is_empty
+    end
+
+    @testset "Two files with errors" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar.jl"), "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\nend\n")
+                    write(io2, "function g()\n  @async 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
+
+                    result = String(take!(str))
+
+                    expected = r"""
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "No splatting warning in tests" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar_test.jl"), "w") do io2
+                    write(io1, "function f()\n  foo(x...)\nend\n")
+                    write(io2, "\n\nfunction g()\n  foo(x...)\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
+
+                    result = String(take!(str))
+
+                    expected = " - **Line 2, column 3:** Splatting (`...`) should be used with extreme caution."
+                    result_matching = startswith(result, expected)
+                    result_matching = result_matching && !contains(result, "bar_test.jl")
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Report generation of two files with errors" begin
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            file2 = joinpath(dir, "bar.jl")
+            open(file1, "w") do io1
+                open(file2, "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\nend\n")
+                    write(io2,
+                          "function g()\n  finalizer(\"hello\") do x nothing\nend\nend")
+
+                    flush(io1)
+                    flush(io2)
+
+                    output_file = tempname()
+                    json_output = IOBuffer()
+                    stream_workflowcommand = IOBuffer()
+                    ReLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand)
+
+                    # Checking the Workflow command
+                    stream_workflowcommand_report = String(take!(stream_workflowcommand))
+                    wc_lines = split(stream_workflowcommand_report, "\n")
+                    @test length(wc_lines) == 3
+                    @test isempty(wc_lines[end])
+                    @test contains(wc_lines[1], "foo.jl,line=2,col=3::Use `@spawn` instead of `@async`.")
+
+                    # Checking the JSON
+                    json_report = JSON3.read(String(take!(json_output)))
+                    @test json_report[:source] == "ReLint"
+                    @test json_report[:data][:files_count] == 2
+
+                    @test json_report[:data][:violation_count] == 1
+                    @test json_report[:data][:recommandation_count] == 1
+                    @test json_report[:data][:fatalviolations_count] == 0
+
+                    local result
+                    open(output_file) do oo
+                        result = read(oo, String)
+                    end
+
+                    # First violations across files, then recommendations across files
+                    expected = r"""
+                        ## Static code analyzer report
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        Report creation time \(UTC\): \H+
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+
+
+                        <details>
+                        <summary>For PR Reviewer \(1\)</summary>
+
+                         - \*\*Line 2, column 3:\*\* `finalizer\(_,_\)` should not be used\. \H+\
+
+                        </details>
+
+                        🚨\*\*In total, 0 fatal rule violation, 1 rule violation and 1 PR reviewer recommendation are found over 2 Julia files\*\*🚨
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                    # DEBUG:
+                    !result_matching && @info result
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Report generation of two files with errors 02" begin
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            file2 = joinpath(dir, "bar.jl")
+            open(file1, "w") do io1
+                open(file2, "w") do io2
+                    write(io1, "function g()\n  @async 1 + 1\nend\n  finalizer(\"hello\") do x nothing\nend\n")
+                    write(io2, "function f()\n  @async 1 + 1\nend\n  finalizer(\"hello\") do x nothing\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    output_file = tempname()
+                    json_output = IOBuffer()
+                    ReLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand=devnull)
+
+                    json_report = JSON3.read(String(take!(json_output)))
+                    @test json_report[:source] == "ReLint"
+                    @test json_report[:data][:files_count] == 2
+
+                    @test json_report[:data][:recommandation_count] == 2
+                    @test json_report[:data][:violation_count] == 2
+
+                    local result
+                    open(output_file) do oo
+                        result = read(oo, String)
+                    end
+
+                    # First violations across files, then recommendations across files
+                    expected = r"""
+                        ## Static code analyzer report
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        Report creation time \(UTC\): \H+
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+
+                        <details>
+                        <summary>For PR Reviewer \(2\)</summary>
+
+                         - \*\*Line 4, column 3:\*\* `finalizer\(_,_\)` should not be used\. \H+
+                         - \*\*Line 4, column 3:\*\* `finalizer\(_,_\)` should not be used\. \H+
+
+                        </details>
+
+                        🚨\*\*In total, 0 fatal rule violation, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                    # DEBUG:
+                    !result_matching && @info result
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Report generation of two files with errors 02 - JSON report" begin
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            file2 = joinpath(dir, "bar.jl")
+            open(file1, "w") do io1
+                open(file2, "w") do io2
+                    write(io1, "function g()\n  @async 1 + 1\nend\n  finalizer(\"hello\") do x nothing\nend\n")
+                    write(io2, "function f()\n  @async 1 + 1\nend\n  finalizer(\"hello\") do x nothing\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    output_file = tempname()
+                    json_filename = tempname()
+                    @test !isfile(json_filename)
+                    # json_io = IOBuffer()
+                    ReLint.generate_report([file1, file2], output_file; json_filename, stream_workflowcommand=devnull)
+
+                    @test isfile(json_filename)
+                    json_content = open(io->read(io, String), json_filename)
+                    json_report = JSON3.read(json_content)
+
+                    @test json_report[:source] == "ReLint"
+                    @test json_report[:data][:files_count] == 2
+
+                    @test json_report[:data][:recommandation_count] == 2
+                    @test json_report[:data][:violation_count] == 2
+
+                    local result
+                    open(output_file) do oo
+                        result = read(oo, String)
+                    end
+
+                    # First violations across files, then recommendations across files
+                    expected = r"""
+                        ## Static code analyzer report
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        Report creation time \(UTC\): \H+
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+                         - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
+
+                        <details>
+                        <summary>For PR Reviewer \(2\)</summary>
+
+                         - \*\*Line 4, column 3:\*\* `finalizer\(_,_\)` should not be used\. \H+
+                         - \*\*Line 4, column 3:\*\* `finalizer\(_,_\)` should not be used\. \H+
+
+                        </details>
+
+                        🚨\*\*In total, 0 fatal rule violation, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                    # DEBUG:
+                    !result_matching && @info result
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "No modified julia file" begin
+        output_file = tempname()
+        json_output = IOBuffer()
+        ReLint.generate_report(String[], output_file; json_output, stream_workflowcommand=devnull)
+
+        json_report = JSON3.read(String(take!(json_output)))
+        @test json_report[:source] == "ReLint"
+        @test json_report[:data][:files_count] == 0
+
+        @test json_report[:data][:recommandation_count] == 0
+        @test json_report[:data][:violation_count] == 0
+
+
+        expected = r"""
+            ## Static code analyzer report
+            \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+            Report creation time \(UTC\): \H+
+            No Julia file is modified or added in this PR.
+            """
+        result = open(io->read(io, String), output_file)
+
+        result_matching = !isnothing(match(expected, result))
+        @test result_matching
+    end
+
+    @testset "No result with no julia file" begin
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.txt")
+            open(file1, "w") do io1
+                write(io1, "Hello World\n")
+                flush(io1)
+
+                output_file = tempname()
+                json_output = IOBuffer()
+                ReLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
+
+                json_report = JSON3.read(String(take!(json_output)))
+                @test json_report[:source] == "ReLint"
+                @test json_report[:data][:files_count] == 0
+                @test json_report[:data][:recommandation_count] == 0
+                @test json_report[:data][:violation_count] == 0
+
+                local result
+                open(output_file) do oo
+                    result = read(oo, String)
+                end
+
+
+                expected = r"""
+                    ## Static code analyzer report
+                    \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                    Report creation time \(UTC\): \H+
+                    No Julia file is modified or added in this PR.
+                    """
+                result_matching = !isnothing(match(expected, result))
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Report generation of two files with no errors" begin
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            file2 = joinpath(dir, "bar.jl")
+            open(file1, "w") do io1
+                open(file2, "w") do io2
+                    write(io1, "function f()\n  @spawn 1 + 1\nend\n")
+                    write(io2, "function g()\n  @spawn 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    output_file = tempname()
+                    json_output = IOBuffer()
+                    ReLint.generate_report([file1, file2], output_file; json_output, stream_workflowcommand=devnull)
+
+                    json_report = JSON3.read(String(take!(json_output)))
+                    @test json_report[:source] == "ReLint"
+                    @test json_report[:data][:files_count] == 2
+                    @test json_report[:data][:recommandation_count] == 0
+                    @test json_report[:data][:violation_count] == 0
+
+                    local result
+                    open(output_file) do oo
+                        result = read(oo, String)
+                    end
+
+                    expected = r"""
+                        ## Static code analyzer report
+                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        Report creation time \(UTC\): \H+
+                        🎉No potential threats are found over 2 Julia files.👍
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Report generation of 1 file with no errors" begin
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            open(file1, "w") do io1
+                write(io1, "function f()\n  @spawn 1 + 1\nend\n")
+                flush(io1)
+
+                output_file = tempname()
+                json_output = IOBuffer()
+                ReLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
+
+                json_report = JSON3.read(String(take!(json_output)))
+                @test json_report[:source] == "ReLint"
+                @test json_report[:data][:files_count] == 1
+
+                @test json_report[:data][:recommandation_count] == 0
+                @test json_report[:data][:violation_count] == 0
+
+                local result
+                open(output_file) do oo
+                    result = read(oo, String)
+                end
+
+                expected = r"""
+                    ## Static code analyzer report
+                    \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                    Report creation time \(UTC\): \H+
+                    🎉No potential threats are found over 1 Julia file.👍
+                    """
+                result_matching = !isnothing(match(expected, result))
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "Report generation of 1 file with 1 error and github info" begin
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            open(file1, "w") do io1
+                write(io1, "function f()\n  @async 1 + 1\nend\n")
+                flush(io1)
+
+                output_file = tempname()
+                json_io = IOBuffer()
+                ReLint.generate_report(
+                    [file1],
+                    output_file;
+                    json_output=json_io,
+                    github_repository="RelationalAI/raicode",
+                    branch_name="axb-foo-bar",
+                    file_prefix_to_remove="var/",
+                    stream_workflowcommand=devnull)
+
+                json_report = JSON3.read(String(take!(json_io)))
+                @test json_report[:source] == "ReLint"
+                @test json_report[:data][:files_count] == 1
+
+                @test json_report[:data][:violation_count] == 1
+                @test json_report[:data][:recommandation_count] == 0
+
+                local result
+                open(output_file) do oo
+                    result = read(oo, String)
+                end
+
+                # Remove the first folder to address an issue of GitHub Action
+                # (See MarkdownFormat for more information)
+                corrected_file_name = ReLint.remove_prefix_from_filename(file1, "var/")
+
+                expected = " - **[Line 2, column 3:]" *
+                    "(https://github.com/RelationalAI/raicode/blob/axb-foo-bar/$(corrected_file_name)" *
+                    "#L2)** Use `@spawn` instead of `@async`."
+                if !occursin(expected, result)
+                    @info "didn't match" expected result
+                end
+                @test occursin(expected, result)
+            end
+        end
+    end
+
+    @testset "Report generation of all the folder" begin
+        # This is a slow test
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            open(file1, "w") do io1
+                write(io1, "function f()\n  @async 1 + 1\nend\n")
+                flush(io1)
+
+                output_file = tempname()
+                json_io = IOBuffer()
+                ReLint.generate_report(
+                    [file1], # Ignored because of analyze_all_file_found_locally
+                    output_file;
+                    json_output=json_io,
+                    github_repository="RelationalAI/raicode",
+                    branch_name="axb-foo-bar",
+                    file_prefix_to_remove="var/",
+                    analyze_all_file_found_locally=true, # OVERRIDE THE PROVIDED SET OF FILES
+                    stream_workflowcommand=devnull
+                )
+
+                json_report = JSON3.read(String(take!(json_io)))
+
+                @test json_report[:source] == "ReLint"
+                @test json_report[:data][:files_count] >= 2
+                @test json_report[:data][:violation_count] >= 0
+                @test json_report[:data][:recommandation_count] >= 0
+                @test json_report[:data][:fatalviolations_count] >= 0
+
+                local result
+                open(output_file) do oo
+                    result = read(oo, String)
+                end
+                last_line = filter(!isempty, split(result, "\n"))[end]
+                @test last_line != "No Julia file is modified or added in this PR."
+            end
+        end
+    end
+
+    @testset "Limiting report" begin
+        # this tests create a Julia file with 100 violations, the report should mention
+        # 100 violations, however only (an arbitrary) 30 are reported.
+        local result_matching = false
+        mktempdir() do dir
+            file1 = joinpath(dir, "foo.jl")
+            open(file1, "w") do io1
+                write(io1, "function f()\n")
+                for _ in 1:100
+                    write(io1, "    @async 1 + 1\n")
+                end
+                write(io1, "end\n")
+                flush(io1)
+
+                output_file = tempname()
+                json_output = IOBuffer()
+                ReLint.generate_report([file1], output_file; json_output, stream_workflowcommand=devnull)
+
+                json_report = JSON3.read(String(take!(json_output)))
+                @test json_report[:source] == "ReLint"
+                @test json_report[:data][:files_count] == 1
+                @test json_report[:data][:recommandation_count] == 0
+                @test json_report[:data][:violation_count] == 100
+
+                local result
+                open(output_file) do oo
+                    result = read(oo, String)
+                end
+                all_lines = split(result, "\n")
+                lines_count = length(all_lines)
+                @test lines_count < 70
+
+                @test all_lines[end-3] == "⚠️Only a subset of the violations and recommandations are here reported⚠️"
+                @test all_lines[end-2] == "🚨**In total, 0 fatal rule violation, 100 rule violations and 0 PR reviewer recommendation are found over 1 Julia file**🚨"
+                @test all_lines[end] == ""
+            end
+        end
+    end
+
+    @testset "Diamond between files" begin
+        mktempdir() do dir
+            open(joinpath(dir, "leaf.jl"), "w") do io
+                write(io, "function f()\n  @async 1 + 1\nend\n")
+            end
+
+            open(joinpath(dir, "bar.jl"), "w") do io
+                write(io, "include(\"leaf.jl\")\n")
+            end
+
+            str = IOBuffer()
+            result = ReLint.run_lint(dir; io=str, formatter=ReLint.MarkdownFormat())
+            @test result.files_count == 2
+            @test result.violations_count == 1
+            @test result.recommendations_count == 0
+        end
+    end
+end
+
+@testset "Running on a directory" begin
+    @testset "Non empty directory" begin
+        local r
+        r = LintResult()
+
+        formatters = [ReLint.PlainFormat(), ReLint.MarkdownFormat()]
+        for formatter in formatters
+            mktempdir() do dir
+                open(joinpath(dir, "foo.jl"), "w") do io
+                    write(io, "function f()\n  @async 1 + 1\nend\n")
+                    flush(io)
+                    str = IOBuffer()
+                    append!(r, ReLint.run_lint(dir; io=str, formatter))
+                end
+            end
+        end
+        @test (r.violations_count + r.recommendations_count) == 2
+    end
+
+    @testset "Empty directory" begin
+        mktempdir() do dir
+            @test ReLint.run_lint(dir) == LintResult()
+        end
+    end
+end
+
+@testset "Locally disabling lint" begin
+    @testset "lint-disable-next-line" begin
+        @test !lint_has_error_test("""
+            function f()
+                # lint-disable-next-line
+                @async 1 + 2
+            end
+            """)
+        @test !lint_has_error_test("""
+            function f()
+                # lint-disable-next-line
+                @async 1 + 2
+            end
+            """)
+
+        @test !lint_has_error_test("""
+            function f()
+                # lint-disable-next-line
+                @async 1 + 2
+            end
+            """)
+
+        @test lint_has_error_test("""
+            function f()
+                # lint-disable-next-line
+                @async 1 + 2
+
+                @async 1 + 3
+            end
+            """)
+        @test lint_has_error_test("""
+            function f()
+                @async 1 + 2
+                # lint-disable-next-line
+
+                @async 1 + 3
+            end
+            """)
+        @test lint_has_error_test("""
+            function f()
+                @async 1 + 2
+                # lint-disable-next-line
+                @async 1 + 3
+            end
+            """)
+
+        source = """
+            function f()
+                # lint-disable-next-line
+                @async 1 + 2
+
+                @async 1 + 3
+            end
+            """
+        source_lines = split(source, "\n")
+        @test convert_offset_to_line_from_lines(46, source_lines) == (3, 4, "lint-disable-line")
+        @test convert_offset_to_line_from_lines(64, source_lines) == (5, 4, nothing)
+    end
+
+    @testset "Locally disabling rule 01" begin
+        source = """
+        function f()
+            # lint-disable-next-line: Use `@spawn` instead of `@async`.
+            @async 1 + 1
+        end
+        """
+        source_lines = split(source, "\n")
+        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
+        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 14, "lint-disable-line: Use `@spawn` instead of `@async`.")
+
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "Locally disabling rule 02" begin
+        source = """
+        function f()
+            # lint-disable-next-line: Use `@spawn` instead of `@async`.
+            @async unsafe_foo(12)
+        end
+        """
+        source_lines = split(source, "\n")
+        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
+        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 14, "lint-disable-line: Use `@spawn` instead of `@async`.")
+
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 3, column 12: An `unsafe_` function should be called only from an `unsafe_` function.")
+    end
+
+    @testset "Locally disabling rule 03" begin
+        source = """
+        function f()
+            # lint-disable-next-line: An `unsafe_` function
+            @async unsafe_foo(42)
+        end
+        """
+        @test lint_has_error_test(source)
+        @test lint_test(source,
+            "Line 3, column 5: Use `@spawn` instead of `@async`.")
+    end
+
+    @testset "Locally disabling rule 04" begin
+        source = """
+        function f()
+            # lint-disable-next-line:Use `@spawn` instead of `@async`.
+            @async 1 + 1
+        end
+        """
+        source_lines = split(source, "\n")
+        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
+        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 15, "lint-disable-line: Use `@spawn` instead of `@async`.")
+
+        @test !lint_has_error_test(source)
+    end
+
+    @testset "Locally disabling rule 05" begin
+        source = """
+        function f()
+            # lint-disable-next-line:  Use `@spawn` instead of `@async`.
+            @async 1 + 1
+        end
+        """
+        source_lines = split(source, "\n")
+        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
+        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 13, "lint-disable-line: Use `@spawn` instead of `@async`.")
+
+        @test !lint_has_error_test(source)
+    end
+end
+
+@testset "Relaxing unused bindings" begin
+    # @test lint_test("""
+    #        function f(a::Int64, b, c)
+    #            local x
+    #            return 42
+    #        end
+    #        """, "Line 2, column 11: Variable has been assigned but not used")
+
+    @test !lint_has_error_test("""
+           function f(a::Int64, b, c)
+               local _
+               return 42
+           end
+           """)
+
+    @test !lint_has_error_test("""
+           function f(a::Int64, b, c)
+               local _x
+               return 42
+           end
+           """)
+end
+
+@testset "Recommentation separated from violations" begin
+    source = """
+    function f()
+        @async 1 + 1
+    end
+    function g()
+        @lock Lock() begin
+            1 + 1
+        end
+    end
+    """
+    io=IOBuffer()
+    run_lint_on_text(source; io)
+
+    result = String(take!(io))
+    expected = r"""
+    ---------- \H+
+    Line 2, column 5: Use `@spawn` instead of `@async`\. \H+
+    1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
+    ----------
+    """
+    @test !isnothing(match(expected, result))
+end
+
+@testset "Arithmetic LintResult" begin
+    l1 = LintResult()
+    l2 = LintResult(1, 2, 3)
+    l3 = LintResult(10, 20, 30)
+    l6 = LintResult(10, 20, 30, 40)
+    l4 = LintResult(10, 20, 30, 40, ["foo.jl"], 100, [])
+    l5 = LintResult(10, 20, 30, 40, ["foo2.jl"], 250)
+
+
+    @test l1 == l1
+    @test l1 == LintResult()
+    # @test (l1 + l2) == l2
+    # @test (l3 + l2) == LintResult(11, 22, 33)
+    @test l4 != l5
+    @test l3 != l4
+    @test l3 != l5
+
+    append!(l4, l5)
+    @test l4 == LintResult(20, 40, 60, 80, ["foo.jl", "foo2.jl"], 350)
+end
+
+@testset "PreCommit format" begin
+    @testset "No fatal violation" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar.jl"), "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\nend\n")
+                    write(io2, "function g()\n  @async 1 + 1\nend\n")
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    result = ReLint.run_lint(dir; io=str, formatter=ReLint.PreCommitFormat())
+                    ReLint.print_summary(ReLint.PreCommitFormat(), str, result)
+
+                    result = String(take!(str))
+
+                    expected = r"""
+                        2 potential threats are found: 0 fatal violation, 2 violations and 0 recommendation
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                end
+            end
+        end
+        @test result_matching
+    end
+
+    @testset "With fatal violations" begin
+        local result_matching = false
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io1
+                open(joinpath(dir, "bar.jl"), "w") do io2
+                    write(io1, "function f()\n  @async 1 + 1\n  @warn \"blah\"\nend\n")
+                    write(io2, """
+                        function g()
+                            @async 1 + 1
+                            @info "blah"
+                        end
+                        """)
+
+                    flush(io1)
+                    flush(io2)
+
+                    str = IOBuffer()
+                    result = ReLint.run_lint(dir; io=str, formatter=ReLint.PreCommitFormat())
+                    ReLint.print_summary(ReLint.PreCommitFormat(), str, result)
+
+                    result = String(take!(str))
+
+                    expected = r"""
+                        Line 3, column 5: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
+                        Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/foo.jl
+                        4 potential threats are found: 2 fatal violations, 2 violations and 0 recommendation
+                        Note that the list above only show fatal violations
+                        """
+                    result_matching = !isnothing(match(expected, result))
+                end
+            end
+        end
+        @test result_matching
+    end
+end
+
+@testset "Printing LintReport" begin
+    using ReLint: LintRuleReport, LintResult, print_report, PreCommitFormat, is_fatal
+
+    result = LintResult()
+    lint_report = LintRuleReport(ReLint.FATAL_VIOLATIONS["@generated"], "error")
+    io = IOBuffer()
+    print_report(PreCommitFormat(), io, lint_report, result)
+    @test String(take!(io)) == "Line 0, column 0: error \n"
+end

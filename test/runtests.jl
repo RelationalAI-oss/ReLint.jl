@@ -11,4 +11,4 @@ include(joinpath(@__DIR__, "violations.jl"))
 include(joinpath(@__DIR__, "recommendations.jl"))
 
 # include(joinpath(@__DIR__, "lint_context_tests.jl"))
-# include(joinpath(@__DIR__, "rai_rules_tests.jl"))
+include(joinpath(@__DIR__, "interface.jl"))

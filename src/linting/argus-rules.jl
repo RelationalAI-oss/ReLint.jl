@@ -17,12 +17,12 @@ using Argus
     post_check = nothing
 end
 
-@define_rule_hook :only_in_dir begin
-    args = @pattern {dir}
+@define_rule_hook :only_in_dirs begin
+    args = @pattern [{dirs}...]
 
-    pre_check = @check [:dir] begin
-        dir_name = dir.src.children[1].val
-        if !contains(current_file(), dir_name)
+    pre_check = @check [:dirs] begin
+        dir_names = map(s -> s.children[1].val, dirs.src)
+        if !any(contains.(current_file(), dir_names))
             skip_match()
         end
     end
@@ -86,22 +86,25 @@ VIOLATIONS["array with no specific type"] = Rule(
         )))
     )),
     Dict(
-        :only_in_dir => "src/Compiler"
+        :only_in_dirs => ["src/Compiler"]
     )
 )
 
+# RemovePageRule
 VIOLATIONS["remove_page"] = Rule(
     "remove_page",
     "`remove_page` should be used with extreme caution.",
     @pattern remove_page({_}, {_})
 )
 
+# TaskRule
 VIOLATIONS["Task"] = Rule(
     "Task",
     "`Task` should be used with extreme caution.",
     @pattern Task({_})
 )
 
+# ErrorExceptionRule
 VIOLATIONS["ErrorException"] = Rule(
     "ErrorException",
     "Use custom exception instead of the generic `ErrorException`.",
@@ -241,7 +244,7 @@ VIOLATIONS["RelPath"] = Rule(
         RelPath({_}, {_})
     )),
     Dict(
-        :only_in_dir => "src/Compiler/Front"
+        :only_in_dirs => ["src/Compiler/Front"]
     )
 )
 VIOLATIONS["RelPath split_path"] = Rule(
@@ -249,7 +252,7 @@ VIOLATIONS["RelPath split_path"] = Rule(
     "Usage of `RelPath` API method `split_path` is not allowed in this context.",
     (@pattern split_path({_})),
     Dict(
-        :only_in_dir => "src/Compiler/Front"
+        :only_in_dirs => ["src/Compiler/Front"]
     )
 )
 VIOLATIONS["RelPath drop_first"] = Rule(
@@ -257,7 +260,7 @@ VIOLATIONS["RelPath drop_first"] = Rule(
     "Usage of `RelPath` API method `drop_first` is not allowed in this context.",
     (@pattern drop_first({_})),
     Dict(
-        :only_in_dir => "src/Compiler/Front"
+        :only_in_dirs => ["src/Compiler/Front"]
     )
 )
 VIOLATIONS["RelPath relpath_from_signature"] = Rule(
@@ -267,10 +270,11 @@ VIOLATIONS["RelPath relpath_from_signature"] = Rule(
     in this context.""",
     (@pattern relpath_from_signature({_})),
     Dict(
-        :only_in_dir => "src/Compiler/Front"
+        :only_in_dirs => ["src/Compiler/Front"]
     )
 )
 
+# UseOfStaticThreads
 VIOLATIONS["static threads"] = Rule(
     "static threads",
     """
@@ -316,10 +320,11 @@ VIOLATIONS["untyped array comprehension"] = Rule(
     Use `T[x for x in xs]` instead of `[x for x in xs]`.""",
     (@pattern [{_} for {_} in {_}]),
     Dict(
-        :only_in_dir => "src/Compiler/"
+        :only_in_dirs => ["src/Compiler/"]
     )
 )
 
+# ConstGlobalMissingTypeRule
 register_syntax_class!(:const, SyntaxClass(
     "const assignment",
     [
@@ -369,7 +374,7 @@ VIOLATIONS["not fully parametrised constructor"] = Rule(
         ~when([:id], startswith(id.name, r"[A-Z]"))
     )),
     Dict(
-        :only_in_dir => "src/Compiler",
+        :only_in_dirs => ["src/Compiler"],
         :exclude_files => ["test/", "test.jl"]
     )
 )

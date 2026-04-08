@@ -53,6 +53,8 @@ RECOMMENDATIONS["return-type-annotation"] = Rule(
 
 VIOLATIONS = RuleGroup("violations")
 
+# AsyncRule
+#
 # TODO: Template for `@spawn`.
 VIOLATIONS["@async"] = Rule(
     "@async",
@@ -60,6 +62,8 @@ VIOLATIONS["@async"] = Rule(
     @pattern ~or(@async({_}), Threads.@async({_}))
 )
 
+# InitializingWithFunctionRule
+#
 # TODO: Pattern variables in rule messages.
 VIOLATIONS["initializing with `nthreads`"] = Rule(
     "initializing with `nthreads`",
@@ -75,6 +79,7 @@ VIOLATIONS["initializing with `is_local_deployment`"] = Rule(
     )
 )
 
+# ArrayWithNoTypeRule
 VIOLATIONS["array with no specific type"] = Rule(
     "array with no specific type",
     "Need a specific Array type to be provided.",
@@ -114,6 +119,7 @@ VIOLATIONS["ErrorException"] = Rule(
     )
 )
 
+# ErrorRule
 VIOLATIONS["error"] = Rule(
     "error",
     "Use custom exception instead of the generic `error()`.",
@@ -123,6 +129,7 @@ VIOLATIONS["error"] = Rule(
     )
 )
 
+# UnsafeRule
 register_syntax_class!(:unsafe_funcall, SyntaxClass(
     "`unsafe_*` function call",
     [
@@ -144,6 +151,7 @@ VIOLATIONS["unsafe_ function"] = Rule(
     )
 )
 
+# InRule
 VIOLATIONS["in"] = Rule(
     "in",
     "Use `tin(item,collection)` instead of the Julia's `in` or `∈`.",
@@ -153,18 +161,21 @@ VIOLATIONS["in"] = Rule(
     )
 )
 
+# HasKeyRule
 VIOLATIONS["haskey"] = Rule(
     "haskey",
     "Use `thaskey(dict,key)` instead of the Julia's `haskey`.",
     @pattern haskey({_}, {_})
 )
 
+# EqualRule
 VIOLATIONS["equal"] = Rule(
     "equal",
     "Use `tequal(dict,key)` instead of the Julia's `equal`.",
     @pattern equal({_}, {_})
 )
 
+# UvRule
 VIOLATIONS["uv"] = Rule(
     "uv",
     "`uv_` functions should be used with extreme caution.",
@@ -174,6 +185,8 @@ VIOLATIONS["uv"] = Rule(
     )
 )
 
+# UnreachableBranchRule
+#
 # TODO: Find a way to express this in its most general form. Something like:
 #
 # @pattern ~or(
@@ -226,6 +239,7 @@ VIOLATIONS["unreachable branch"] = Rule(
     )
 )
 
+# StringInterpolationRule
 VIOLATIONS["string interpolation"] = Rule(
     "string interpolation",
     "Use \$(x) instead of \$x.",
@@ -235,6 +249,7 @@ VIOLATIONS["string interpolation"] = Rule(
     )
 )
 
+# RelPathAPIUsageRule
 VIOLATIONS["RelPath"] = Rule(
     "RelPath",
     "Usage of type `RelPath` is not allowed in this context.",
@@ -286,21 +301,24 @@ VIOLATIONS["static threads"] = Rule(
     )
 )
 
+# NoImportRule
 VIOLATIONS["no import"] = Rule(
     "no import",
     "Imports must be specified with `using` and not `import`.",
     @pattern {_:::import}
 )
 
+# NotImportingRAICodeRule
 VIOLATIONS["no import RAICode"] = Rule(
     "no import RAICode",
     "Importing RAICode should be avoided (when possible).",
     @pattern begin
         {u:::using}
-        @when [:u] u.module_name.name == "RAICode"
+        @when [:u] u.module.module_name == "RAICode"
     end
 )
 
+# BareUsingRule
 VIOLATIONS["bare using"] = Rule(
     "bare using",
     "Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.",
@@ -313,6 +331,7 @@ VIOLATIONS["bare using"] = Rule(
     )
 )
 
+# UntypedArrayComprehensionRule
 VIOLATIONS["untyped array comprehension"] = Rule(
     "untyped array comprehension",
     """
@@ -332,8 +351,8 @@ register_syntax_class!(:const, SyntaxClass(
         (@pattern const global {_} = {_})
     ]
 ))
-VIOLATIONS["non-const global"] = Rule(
-    "non-const global",
+VIOLATIONS["non-const untyped global"] = Rule(
+    "non-const untyped global",
     """
     Global variable must have type annotation: `global x::Type = value`. \
     Use `const` for immutable globals.""",
@@ -346,6 +365,7 @@ VIOLATIONS["non-const global"] = Rule(
     )
 )
 
+# NotFullyParameterizedConstructorRule
 register_syntax_class!(:loop, SyntaxClass(
     "`for` or `while` loop",
     [

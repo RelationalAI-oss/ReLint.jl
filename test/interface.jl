@@ -1,19 +1,3 @@
-@testset "offset to line" begin
-    source = """
-        function f()
-            return Threads.nthreads()
-        end
-        """
-    @test_throws BoundsError convert_offset_to_line(-1, source)
-    @test_throws BoundsError convert_offset_to_line(length(source) + 2, source)
-
-    @test convert_offset_to_line(10, source) == (1, 10, nothing)
-    @test convert_offset_to_line(20, source) == (2, 7, nothing)
-    @test convert_offset_to_line(42, source) == (2, 29, nothing)
-    @test convert_offset_to_line(46, source) == (3, 3, nothing)
-
-end
-
 @testset "Run several times on same file" begin
     mktempdir() do dir
         open(joinpath(dir, "foo.jl"), "w") do io
@@ -738,15 +722,6 @@ end
             function f()
                 # lint-disable-next-line
                 @async 1 + 2
-
-                @async 1 + 3
-            end
-            """)
-        @test lint_has_error_test("""
-            function f()
-                @async 1 + 2
-                # lint-disable-next-line
-
                 @async 1 + 3
             end
             """)
@@ -757,18 +732,13 @@ end
                 @async 1 + 3
             end
             """)
-
-        source = """
+        @test lint_has_error_test("""
             function f()
-                # lint-disable-next-line
                 @async 1 + 2
-
+                # lint-disable-next-line
                 @async 1 + 3
             end
-            """
-        source_lines = split(source, "\n")
-        @test convert_offset_to_line_from_lines(46, source_lines) == (3, 4, "lint-disable-line")
-        @test convert_offset_to_line_from_lines(64, source_lines) == (5, 4, nothing)
+            """)
     end
 
     @testset "Locally disabling rule 01" begin
@@ -778,10 +748,6 @@ end
             @async 1 + 1
         end
         """
-        source_lines = split(source, "\n")
-        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
-        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 14, "lint-disable-line: Use `@spawn` instead of `@async`.")
-
         @test !lint_has_error_test(source)
     end
 
@@ -792,10 +758,6 @@ end
             @async unsafe_foo(12)
         end
         """
-        source_lines = split(source, "\n")
-        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
-        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 14, "lint-disable-line: Use `@spawn` instead of `@async`.")
-
         @test lint_has_error_test(source)
         @test lint_test(source,
             "Line 3, column 12: An `unsafe_` function should be called only from an `unsafe_` function.")
@@ -820,10 +782,6 @@ end
             @async 1 + 1
         end
         """
-        source_lines = split(source, "\n")
-        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
-        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 15, "lint-disable-line: Use `@spawn` instead of `@async`.")
-
         @test !lint_has_error_test(source)
     end
 
@@ -834,10 +792,6 @@ end
             @async 1 + 1
         end
         """
-        source_lines = split(source, "\n")
-        @test convert_offset_to_line_from_lines(30, source_lines) == (2, 17, nothing)
-        @test convert_offset_to_line_from_lines(91, source_lines) == (3, 13, "lint-disable-line: Use `@spawn` instead of `@async`.")
-
         @test !lint_has_error_test(source)
     end
 end

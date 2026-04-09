@@ -2,7 +2,7 @@ using ReLint: ReLint, run_lint_on_text, convert_offset_to_line,
     convert_offset_to_line_from_lines, MarkdownFormat, PlainFormat,
     has_values
 
-using ReLint: LintResult, LintContext
+using ReLint: LintGlobalReport, LintContext
 using Test
 using JSON3
 

@@ -112,7 +112,7 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
     end
 
     using ReLint: ReLint, LintContext
-    result = ReLint.LintResult()
+    result = ReLint.LintGlobalReport()
     all_files_tmp=split(open(io->read(io, String), \"$FILES_TO_RUN\", \"r\"))
     all_files=map(string, all_files_tmp)
     all_files=filter(f->isfile(f) || isdir(f), all_files)

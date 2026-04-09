@@ -1,3 +1,4 @@
+abstract type LintRule end
 abstract type LineLintRule <: LintRule end
 abstract type LineRecommendationLintRule <: LineLintRule end
 abstract type LineViolationLintRule <: LineLintRule end

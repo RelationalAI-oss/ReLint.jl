@@ -3,17 +3,17 @@ module ReLint
 using Argus
 using JuliaSyntax
 
-mutable struct LintMeta
-    error
-    LintMeta() = new(nothing)
-    LintMeta(v) = new(v)
-end
+all_rules() = [
+    values(RECOMMENDATIONS)...,
+    values(VIOLATIONS)...,
+    values(FATAL_VIOLATIONS)...
+]
 
-include("linting/extended_checks.jl")
 include("interface.jl")
 
 function __init__()
     include(joinpath(@__DIR__, "linting/argus-rules.jl"))
+    include(joinpath(@__DIR__, "linting/text_lint_rules.jl"))
 end
 
 end

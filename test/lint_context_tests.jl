@@ -4,19 +4,19 @@
     using ReLint: LineLintRule
 
     @testset "Basic" begin
-        @test isempty(LintContext(DataType[]).rules_to_run)
+        @test isempty(LintContext(DataType[]).rules)
 
         dts = DataType[UseOfStaticThreads, LogStatementsMustBeSafe]
         c = LintContext(dts)
-        @test length(c.rules_to_run) == 2
-        @test c.rules_to_run == dts
+        @test length(c.rules) == 2
+        @test c.rules == dts
 
         dts_as_string = ["UseOfStaticThreads", "LogStatementsMustBeSafe"]
         c = LintContext(dts_as_string)
-        @test length(c.rules_to_run) == 2
-        @test c.rules_to_run == dts
+        @test length(c.rules) == 2
+        @test c.rules == dts
 
-        @test iszero(LintContext([]).rules_to_run)
+        @test iszero(LintContext([]).rules)
     end
 
     @testset "Non-existing rule" begin
@@ -61,7 +61,7 @@
 
     @testset "AST and Line rules" begin
         context=LintContext()
-        @test !isempty(context.rules_to_run)
+        @test !isempty(context.rules)
         @test !isempty(ast_rules(context))
         @test !isempty(line_rules(context))
 

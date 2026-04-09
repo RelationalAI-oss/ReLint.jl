@@ -128,8 +128,8 @@ end
 
                     # First violations across files, then recommendations across files
                     expected = r"""
-                        ## Static code analyzer report
-                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        ## Static analysis report
+                        \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
 
@@ -141,7 +141,7 @@ end
 
                         </details>
 
-                        🚨\*\*In total, 0 fatal rule violation, 1 rule violation and 1 PR reviewer recommendation are found over 2 Julia files\*\*🚨
+                        🚨\*\*In total, 0 fatal violations, 1 violation and 1 PR reviewer recommendation were found over 2 Julia files\*\*🚨
                         """
                     result_matching = !isnothing(match(expected, result))
                     # DEBUG:
@@ -183,8 +183,8 @@ end
 
                     # First violations across files, then recommendations across files
                     expected = r"""
-                        ## Static code analyzer report
-                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        ## Static analysis report
+                        \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
@@ -197,7 +197,7 @@ end
 
                         </details>
 
-                        🚨\*\*In total, 0 fatal rule violation, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
+                        🚨\*\*In total, 0 fatal violations, 2 violations and 2 PR reviewer recommendations were found over 2 Julia files\*\*🚨
                         """
                     result_matching = !isnothing(match(expected, result))
                     # DEBUG:
@@ -244,8 +244,8 @@ end
 
                     # First violations across files, then recommendations across files
                     expected = r"""
-                        ## Static code analyzer report
-                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        ## Static analysis report
+                        \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
                          - \*\*Line 2, column 3:\*\* Use `@spawn` instead of `@async`\. \H+
@@ -258,7 +258,7 @@ end
 
                         </details>
 
-                        🚨\*\*In total, 0 fatal rule violation, 2 rule violations and 2 PR reviewer recommendations are found over 2 Julia files\*\*🚨
+                        🚨\*\*In total, 0 fatal violations, 2 violations and 2 PR reviewer recommendations were found over 2 Julia files\*\*🚨
                         """
                     result_matching = !isnothing(match(expected, result))
                     # DEBUG:
@@ -283,10 +283,10 @@ end
 
 
         expected = r"""
-            ## Static code analyzer report
-            \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+            ## Static analysis report
+            \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
             Report creation time \(UTC\): \H+
-            No Julia file is modified or added in this PR.
+            No Julia files were modified or added in this PR.
             """
         result = open(io->read(io, String), output_file)
 
@@ -319,10 +319,10 @@ end
 
 
                 expected = r"""
-                    ## Static code analyzer report
-                    \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                    ## Static analysis report
+                    \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                     Report creation time \(UTC\): \H+
-                    No Julia file is modified or added in this PR.
+                    No Julia files were modified or added in this PR.
                     """
                 result_matching = !isnothing(match(expected, result))
             end
@@ -359,10 +359,10 @@ end
                     end
 
                     expected = r"""
-                        ## Static code analyzer report
-                        \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                        ## Static analysis report
+                        \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                         Report creation time \(UTC\): \H+
-                        🎉No potential threats are found over 2 Julia files.👍
+                        🎉No potential threats were found over 2 Julia files.👍
                         """
                     result_matching = !isnothing(match(expected, result))
                 end
@@ -396,10 +396,10 @@ end
                 end
 
                 expected = r"""
-                    ## Static code analyzer report
-                    \*\*Output of the \[ReLint\.jl code analyzer\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
+                    ## Static analysis report
+                    \*\*Output of \[ReLint\.jl\]\(https://github\.com/RelationalAI-oss/ReLint\.jl\).+\*\*
                     Report creation time \(UTC\): \H+
-                    🎉No potential threats are found over 1 Julia file.👍
+                    🎉No potential threats were found over 1 Julia file.👍
                     """
                 result_matching = !isnothing(match(expected, result))
             end
@@ -470,7 +470,7 @@ end
                     github_repository="RelationalAI/raicode",
                     branch_name="axb-foo-bar",
                     file_prefix_to_remove="var/",
-                    analyze_all_file_found_locally=true, # OVERRIDE THE PROVIDED SET OF FILES
+                    local_files_only=true, # OVERRIDE THE PROVIDED SET OF FILES
                     stream_workflowcommand=devnull
                 )
 
@@ -524,8 +524,11 @@ end
                 lines_count = length(all_lines)
                 @test lines_count < 70
 
-                @test all_lines[end-3] == "⚠️Only a subset of the violations and recommandations are here reported⚠️"
-                @test all_lines[end-2] == "🚨**In total, 0 fatal rule violation, 100 rule violations and 0 PR reviewer recommendation are found over 1 Julia file**🚨"
+                @test all_lines[end-3] == "⚠️Only a subset of the reports are shown⚠️"
+                @test all_lines[end-2] == """
+                                          🚨**In total, 0 fatal violations, 100 \
+                                          violations and 0 PR reviewer recommendations \
+                                          were found over 1 Julia file**🚨"""
                 @test all_lines[end] == ""
             end
         end
@@ -814,7 +817,7 @@ end
     expected = r"""
     ---------- \H+
     Line 2, column 5: Use `@spawn` instead of `@async`\. \H+
-    1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
+    1 potential threat was found: 0 fatal violations, 1 violation and 0 recommendations
     ----------
     """
     @test !isnothing(match(expected, result))
@@ -860,7 +863,7 @@ end
                     result = String(take!(str))
 
                     expected = r"""
-                        2 potential threats are found: 0 fatal violation, 2 violations and 0 recommendation
+                        2 potential threats were found: 0 fatal violations, 2 violations and 0 recommendations
                         """
                     result_matching = !isnothing(match(expected, result))
                 end
@@ -894,8 +897,8 @@ end
                     expected = r"""
                         Line 3, column 5: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/bar.jl
                         Line 3, column 3: Unsafe logging statement\. You must enclose variables and strings with `@safe\(\.\.\.\)`\. \H+/foo.jl
-                        4 potential threats are found: 2 fatal violations, 2 violations and 0 recommendation
-                        Note that the list above only show fatal violations
+                        4 potential threats were found: 2 fatal violations, 2 violations and 0 recommendations
+                        Note that the list above only shows fatal violations
                         """
                     result_matching = !isnothing(match(expected, result))
                 end
@@ -931,7 +934,7 @@ end
         expected = r"""
             ---------- \H+
             Line 1, column 1: `Threads.nthreads\(\)` should not be used in a constant variable\. \H+
-            1 potential threat is found: 0 fatal violation, 1 violation and 0 recommendation
+            1 potential threat was found: 0 fatal violations, 1 violation and 0 recommendations
             ----------
             """
         @test !isnothing(match(expected, result))

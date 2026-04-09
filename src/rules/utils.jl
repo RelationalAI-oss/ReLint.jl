@@ -1,3 +1,6 @@
+# Rule hooks
+# ==========
+
 # TODO: `string_literal` syntax class
 @define_rule_hook :exclude_files begin
     args = @pattern [{files}...]

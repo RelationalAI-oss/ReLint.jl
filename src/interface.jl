@@ -1,5 +1,5 @@
-using Dates
-using JSON3
+import JSON3
+using Dates: now, UTC
 
 global MAX_REPORTED_ERRORS = 60 # 1_000_000
 

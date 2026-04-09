@@ -64,6 +64,7 @@ LintGlobalReport(a, b, c, d, e) = LintGlobalReport(a, b, c, d, e, 0)
 LintGlobalReport(a, b, c, d, e, f) = LintGlobalReport(a, b, c, d, e, f, LintRuleReport[])
 LintGlobalReport(a, b, c, d, e, f, g) = LintGlobalReport(a, b, c, d, e, f, LintRuleReport[], "master")
 
+# Base overwrites
 
 function Base.append!(l1::LintGlobalReport, l2::LintGlobalReport)
     l1.files_count += l2.files_count
@@ -86,15 +87,14 @@ function Base.:(==)(l1::LintGlobalReport, l2::LintGlobalReport)
         l1.lintrule_reports == l2.lintrule_reports
 end
 
-function is_already_linted(l::LintGlobalReport, filename)
-    return filename in l.linted_files
-end
+# Utils
 
-function has_values(l::LintGlobalReport, a, b, c)
-    return l.files_count == a &&
-        l.violations_count == b &&
-        l.recommendations_count == c
-end
+is_already_linted(l::LintGlobalReport, filename) = filename in l.linted_files
+
+has_values(l::LintGlobalReport, a, b, c) =
+    l.files_count == a &&
+    l.violations_count == b &&
+    l.recommendations_count == c
 
 # Precommit config
 # ================
@@ -124,21 +124,16 @@ function extract_file_exclusions_from_precommit_file(pre_commit_file::String)
                 # We are outside the ReLint repo entry
                 if contains(line, "lint-fatal-checks")
                     # We are inside the ReLint repo entry
-                    # @info :inside_repo_entry
                     state = :inside_repo_entry
                     continue
                 end
             elseif state == :inside_repo_entry
-                # @info :inside_repo_entry
-
                 if contains(line, "(?x)^(")
                     # We are inside the ReLint repo entry
                     state = :inside_exclusion_entry
                     continue
                 end
             elseif state == :inside_exclusion_entry
-                # @info :inside_exclusion_entry
-
                 # We are leaving the exclusion portion
                 if contains(line, ")")
                     state = :outside_repo_entry
@@ -610,13 +605,10 @@ function is_disable_rule_comment(str::AbstractString, rule::Rule)
     return startswith(rule.description, lstrip(split_command_from_rules[2]))
 end
 
-# Utils
-# -----
+# Printing
+# --------
 
-function print_header(::PreCommitFormat, io::IO, rootpath::String)
-    # printstyled(io, "-" ^ 10 * " $(rootpath)\n", color=:blue)
-    # printstyled(io, "**List of Fatal violations, please address them to commit these files**\n", color=:red)
-end
+print_header(::PreCommitFormat, io::IO, rootpath::String) = nothing
 
 print_footer(::PreCommitFormat, io::IO) = nothing
 function print_summary(::PreCommitFormat, io::IO, result::LintGlobalReport)
@@ -731,7 +723,7 @@ function print_datadog_report(
         :source => "ReLint",
         :specversion => "1.1",
         :type => "result",
-        :time => string(now(UTC)), #Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SSZ"), # RFC3339 format
+        :time => string(now(UTC)),
         :data => Dict(
             :report_as_string => report_as_string,
             :files_count => files_count,
@@ -739,7 +731,7 @@ function print_datadog_report(
             :recommandation_count => recommandation_count,
             :fatalviolations_count => fatalviolations_count,
             :branch => branch,
-            :rules_count => rules_count, # Added in specversion 1.1
+            :rules_count => rules_count,
         )
     )
     return println(json_output, JSON3.write(event))

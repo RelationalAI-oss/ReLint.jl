@@ -569,7 +569,7 @@ end
 @testset "Running on a directory" begin
     @testset "Non empty directory" begin
         local r
-        r = LintResult()
+        r = LintGlobalReport()
 
         formatters = [ReLint.PlainFormat(), ReLint.MarkdownFormat()]
         for formatter in formatters
@@ -587,7 +587,7 @@ end
 
     @testset "Empty directory" begin
         mktempdir() do dir
-            @test ReLint.run_lint(dir) == LintResult()
+            @test ReLint.run_lint(dir) == LintGlobalReport()
         end
     end
 end
@@ -866,25 +866,25 @@ end
     @test !isnothing(match(expected, result))
 end
 
-@testset "Arithmetic LintResult" begin
-    l1 = LintResult()
-    l2 = LintResult(1, 2, 3)
-    l3 = LintResult(10, 20, 30)
-    l6 = LintResult(10, 20, 30, 40)
-    l4 = LintResult(10, 20, 30, 40, ["foo.jl"], 100, [])
-    l5 = LintResult(10, 20, 30, 40, ["foo2.jl"], 250)
+@testset "Arithmetic LintGlobalReport" begin
+    l1 = LintGlobalReport()
+    l2 = LintGlobalReport(1, 2, 3)
+    l3 = LintGlobalReport(10, 20, 30)
+    l6 = LintGlobalReport(10, 20, 30, 40)
+    l4 = LintGlobalReport(10, 20, 30, 40, ["foo.jl"], 100, [])
+    l5 = LintGlobalReport(10, 20, 30, 40, ["foo2.jl"], 250)
 
 
     @test l1 == l1
-    @test l1 == LintResult()
+    @test l1 == LintGlobalReport()
     # @test (l1 + l2) == l2
-    # @test (l3 + l2) == LintResult(11, 22, 33)
+    # @test (l3 + l2) == LintGlobalReport(11, 22, 33)
     @test l4 != l5
     @test l3 != l4
     @test l3 != l5
 
     append!(l4, l5)
-    @test l4 == LintResult(20, 40, 60, 80, ["foo.jl", "foo2.jl"], 350)
+    @test l4 == LintGlobalReport(20, 40, 60, 80, ["foo.jl", "foo2.jl"], 350)
 end
 
 @testset "PreCommit format" begin
@@ -952,9 +952,9 @@ end
 end
 
 @testset "Printing LintReport" begin
-    using ReLint: LintRuleReport, LintResult, print_report, PreCommitFormat, is_fatal
+    using ReLint: LintRuleReport, LintGlobalReport, print_report, PreCommitFormat, is_fatal
 
-    result = LintResult()
+    result = LintGlobalReport()
     lint_report = LintRuleReport(ReLint.FATAL_VIOLATIONS["@generated"], "error")
     io = IOBuffer()
     print_report(PreCommitFormat(), io, lint_report, result)

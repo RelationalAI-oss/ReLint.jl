@@ -1,6 +1,14 @@
-using BenchmarkTools, Serialization
-import Pkg
 import Git
+
+import Pkg
+benchmarktools_added = "BenchmarkTools" in keys(Pkg.project().dependencies)
+serialization_added = "Serialization" in keys(Pkg.project().dependencies)
+redirect_stdout(devnull) do
+    benchmarktools_added || Pkg.add("BenchmarkTools")
+    serialization_added || Pkg.add("Serialization")
+end
+
+using BenchmarkTools, Serialization
 
 const git = Git.git()
 
@@ -37,12 +45,12 @@ b_main = try
     run(`julia --project=. $(BENCHMARKS_FILE) $(SERIALIZED_BENCHMARKS_FILE) ../$(MAIN_BRANCH)`)
     deserialize(SERIALIZED_BENCHMARKS_FILE)
 catch err
-    run(`$git worktree remove ../$(MAIN_BRANCH)`)
+    run(`$git worktree remove ../$(MAIN_BRANCH) --force`)
     rethrow(err)
 end
 # Clean up.
 cd(CURRENT_DIR)
-run(`$git worktree remove ../$(MAIN_BRANCH)`)
+run(`$git worktree remove ../$(MAIN_BRANCH) --force`)
 
 # Run benchmarks on Argus branch.
 Pkg.activate(CURRENT_DIR)
@@ -62,3 +70,8 @@ println(b_argus)
 println()
 println("Comparison (`iulia/argus` vs `main`):")
 println(judge(median(b_argus), median(b_main)))
+
+redirect_stdout(devnull) do
+    benchmarktools_added || Pkg.rm("BenchmarkTools"; mode=Pkg.PKGMODE_MANIFEST)
+    serialization_added || Pkg.rm("Serialization"; mode=Pkg.PKGMODE_MANIFEST)
+end

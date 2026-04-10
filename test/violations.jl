@@ -706,4 +706,26 @@
         end
     end
 
+    @testset "TODO comments" begin
+        context = ReLint.LintContext([ReLint.VIOLATIONS["TODO"]])
+        @test lint_test("function f()\n # TODO (PR): fix this\n end",
+                        """
+                        Line 2, column 2: Use `TODO (RAI-XXXXX)` instead of `TODO` \
+                        to refer to a Jira issue.""";
+                        context)
+        @test lint_test("function f()\n # TODO: fix this\n end",
+                        """
+                        Line 2, column 2: Use `TODO (RAI-XXXXX)` instead of `TODO` \
+                        to refer to a Jira issue.""";
+                        context)
+        @test lint_test("function f()\n @info \"zork\" # TODO fix this\n end",
+                        """
+                        Line 2, column 15: Use `TODO (RAI-XXXXX)` instead of `TODO` \
+                        to refer to a Jira issue.""";
+                        context)
+
+        @test !lint_has_error_test("function f()\n # TODO (RAI-121) okay\n end")
+        @test !lint_has_error_test("function f()\n # fix this\n end"; context)
+    end
+
 end

@@ -345,3 +345,9 @@ VIOLATIONS["not fully parametrised constructor"] = Rule(
         :exclude_files => ["test/", "test.jl"]
     )
 )
+
+VIOLATIONS["TODO"] = Rule(
+    "TODO",
+    "Use `TODO (RAI-XXXXX)` instead of `TODO` to refer to a Jira issue.",
+    @comment r"TODO(?!:?\s*\(RAI-\d+\))[\S\s]*"
+)

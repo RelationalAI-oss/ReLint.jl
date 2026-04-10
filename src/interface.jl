@@ -249,13 +249,12 @@ Runs lint checks on `text`. Lints will be reported as comming from `filename`.
 function lint_text(text::String; filename="<string>", context::LintContext=LintContext())
     ast = JuliaSyntax.parseall(SyntaxNode, text; filename=filename)
     ast = Argus._normalise!(ast)
-    all_lines = split(text, "\n")
 
     lint_rule_reports = []
-
-    # AST rules
     match_results = rules_match(context.rules, ast; disabler=relint_disabler)
     # Remove refactorings.
+    #
+    # TODO: Include refactorings as suggestions.
     for (rule_name, match_result) in match_results
         successful_match_results = map(m -> m[1], match_result.matches)
         rule =
@@ -264,28 +263,6 @@ function lint_text(text::String; filename="<string>", context::LintContext=LintC
             push!(lint_rule_reports, Argus_result_to_LintRuleReport(rule, m))
         end
     end
-
-    # # Text rules
-    # for (line_number, line) in enumerate(all_lines)
-    #     for rule_type in line_rules(context)
-    #         rule = rule_type()
-    #         (is_error, msg) = check(rule, string(line), markers)
-    #         if is_error
-    #             # We have a violation
-    #             lint_rule_report = LintRuleReport(
-    #                 rule,
-    #                 msg,
-    #                 "",
-    #                 filename,
-    #                 line_number,
-    #                 1,
-    #                 false,
-    #                 0
-    #             )
-    #             push!(lint_rule_reports, lint_rule_report)
-    #         end
-    #     end
-    # end
 
     return lint_rule_reports
 end

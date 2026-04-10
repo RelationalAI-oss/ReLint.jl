@@ -1,3 +1,52 @@
+@testset "LintContext" begin
+    using ReLint: LintContext, VIOLATIONS
+
+    @testset "Basic" begin
+        @test isempty(LintContext(Rule[]).rules)
+
+        rules = [VIOLATIONS["@async"], VIOLATIONS["unsafe_ function"]]
+        c = LintContext(rules)
+        @test length(c.rules) == 2
+        @test c.rules == rules
+
+        @test iszero(LintContext(Rule[]).rules)
+    end
+
+    @testset "Setting context or not" begin
+        source = """
+            function f()
+                _unsafe_g()
+            end
+
+            function _unsafe_g()
+                return 42
+            end
+            """
+        @test count_lint_errors(source) == 1
+        @test count_lint_errors(source; context=LintContext()) == 1
+        @test count_lint_errors(source; context=LintContext(Rule[])) == 0
+        @test count_lint_errors(source;
+                                context=LintContext([VIOLATIONS["@async"]])) == 0
+        @test count_lint_errors(source;
+                                context=LintContext([VIOLATIONS["unsafe_ function"]])) == 1
+    end
+
+    @testset "File in a dir" begin
+        mktempdir() do dir
+            open(joinpath(dir, "foo.jl"), "w") do io
+                write(io, "function f()\n  @async 1 + 1\nend\n")
+                flush(io)
+
+                @test has_values(ReLint.run_lint(dir; io), 1, 1, 0)
+
+                context=LintContext(Rule[])
+                @test has_values(ReLint.run_lint(dir; io, context), 1, 0, 0)
+
+            end
+        end
+    end
+end
+
 @testset "Run several times on same file" begin
     mktempdir() do dir
         open(joinpath(dir, "foo.jl"), "w") do io

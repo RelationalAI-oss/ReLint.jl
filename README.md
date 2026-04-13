@@ -1,23 +1,207 @@
 # ReLint.jl
 
-ReLint is a static code analyzer for Julia. It searches for patterns in Julia source
-code, such patterns aiming to indicate issues and deserve to be reported to the end-user.
-ReLint.jl is inspired from [StaticLint.jl](https://github.com/julia-vscode/StaticLint.jl)
-while being versatile. In particular, highlights of ReLint include:
+Lightweight linter for Julia programs. It provides a set of linting
+rules grouped by severity, GitHub Action integration and some
+pre-commit hooks.
 
-- Lint rules can be easily added;
-- ReLint.jl is runnable from a GitHub Action workflow;
-- ReLint.jl offer a [pre-commit](https://pre-commit.com/) hook, useful to run it at each commit;
-- ReLint.jl is lightweight and fast.
+## Overview
 
-## Installing and Running ReLint
+ReLint is a fast and lightweight linter for Julia built on top of
+[Argus.jl](https://github.com/iuliadmtru/Argus.jl). It provides a set
+of pre-defined linting rules grouped in three categories:
+recommendations, violations and fatal violations.
 
-Installing and running ReLint.jl is easy. Several options are available:
+```julia
+julia> using ReLint
 
-  - Run in the Julia REPL `import Pkg ; Pkg.add(url="https://github.com/RelationalAI-oss/ReLint.jl")`
-  - You can use our pre-commit hook.
+julia> keys(ReLint.RECOMMENDATIONS)
+KeySet for a Dict{String, Argus.Rule} with 16 entries. Keys:
+  "string concatenation"
+  "@cfunction"
+  "@inbounds"
+  "finalizer"
+  "mutating ENV"
+  "@threads"
+  "isnothing"
+  "sleep"
+  "unlock"
+  "yield"
+  "@sync"
+  "interpolation in `@warnv_safe_to_log`"
+  "closure capture by reference"
+  "return type annotation"
+  "splatting"
+  "ccall"
 
-## Basic usage
+julia> keys(ReLint.VIOLATIONS)
+KeySet for a Dict{String, Argus.Rule} with 27 entries. Keys:
+  "RelPath"
+  "@async"
+  "equal"
+  "unreachable branch"
+  "RelPath relpath_from_signature"
+  "RelPath drop_first"
+  "uv"
+  "unsafe_ function"
+  "untyped array comprehension"
+  "array with no specific type"
+  "no import RAICode"
+  "not fully parametrised constructor"
+  "in"
+  "no import"
+  "non-const untyped global"
+  "Task"
+  "error"
+  "haskey"
+  "static threads"
+  "RelPath split_path"
+  "TODO"
+  "string interpolation"
+  "initializing with `nthreads`"
+  "initializing with `is_local_deployment`"
+  "bare using"
+  "ErrorException"
+  "remove_page"
+
+julia> keys(ReLint.FATAL_VIOLATIONS)
+KeySet for a Dict{String, Argus.Rule} with 7 entries. Keys:
+  "unsafe-logging"
+  "noinline with non-literal/identifier args"
+  "show"
+  "TODO PR"
+  "return in anonymous function"
+  "@generated"
+  "unsafe-assert"
+```
+
+The rules can be run on a file or directory using `run_lint`:
+
+```julia
+julia> f = tempname() * ".jl";
+
+julia> write(f, """
+       function f(x)::Int
+           y = unsafe_f(x)
+           return y
+       end
+       """);
+
+julia> ReLint.run_lint(f)
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_HGJU58HAr2.jl
+Line 2, column 9: An `unsafe_` function should be called only from an `unsafe_` function. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_HGJU58HAr2.jl
+Line 1, column 1: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_HGJU58HAr2.jl
+ReLint.LintGlobalReport(1, 1, 1, 0, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_HGJU58HAr2.jl"], 2, ReLint.LintRuleReport[], "master")
+```
+
+The `scripts/` directory contains a shell script that can be used to
+run the rules locally:
+
+```julia
+➜  touch temp.jl
+➜  echo "@generated function f(x)::Int
+    y = unsafe_f(x)
+    return y
+end" >> temp.jl
+➜  ./scripts/run_locally.sh temp.jl
+FULLNAME SCRIPT                 = ./scripts/run_locally.sh
+RELINTPATH PATH                 = ./scripts/..
+FILES_TO_RUN                    = temp.jl
+About to run ReLint...
+Attempt 1 of 5 to run ReLint...
+[ Info: Running lint on 1 files
+┌ Info: Running rules:
+│   rule_names =
+│    50-element Vector{String}:
+│     "string concatenation"
+│     "@cfunction"
+│     "@inbounds"
+│     "finalizer"
+│     "mutating ENV"
+│     "@threads"
+│     "isnothing"
+│     "sleep"
+│     "unlock"
+│     "yield"
+│     ⋮
+│     "ErrorException"
+│     "remove_page"
+│     "unsafe-logging"
+│     "noinline with non-literal/identifier args"
+│     "show"
+│     "TODO PR"
+│     "return in anonymous function"
+│     "@generated"
+└     "unsafe-assert"
+Line 1, column 1: `@generated` should be used with extreme caution. temp.jl
+3 potential threats were found: 1 fatal violation, 1 violation and 1 recommendation
+Note that the list above only shows fatal violations
+┌ Error: Fatal error discovered
+└ @ Main none:32
+ReLint found fatal violations
+➜  ./scripts/run_locally.sh temp.jl --rule 'VIOLATIONS["unsafe_ function"]'
+FULLNAME SCRIPT                 = ./scripts/run_locally.sh
+RULE                            = ReLint.VIOLATIONS["unsafe_ function"]
+RELINTPATH PATH                 = ./scripts/..
+FILES_TO_RUN                    = temp.jl
+About to run ReLint...
+Attempt 1 of 5 to run ReLint...
+[ Info: Running lint on 1 files
+┌ Info: Running rules:
+│   rule_names =
+│    1-element Vector{String}:
+└     "unsafe_ function"
+1 potential threat was found: 0 fatal violations, 1 violation and 0 recommendations
+Note that the list above only shows fatal violations
+ReLint found non-fatal violations
+➜  ./scripts/run_locally.sh temp.jl --rule-group RECOMMENDATIONS
+FULLNAME SCRIPT                 = ./scripts/run_locally.sh
+RULE_GROUP_NAME                 = ReLint.RECOMMENDATIONS,
+RELINTPATH PATH                 = ./scripts/..
+FILES_TO_RUN                    = temp.jl
+About to run ReLint...
+Attempt 1 of 5 to run ReLint...
+[ Info: Running lint on 1 files
+┌ Info: Running rules:
+│   rule_names =
+│    16-element Vector{String}:
+│     "string concatenation"
+│     "@cfunction"
+│     "@inbounds"
+│     "finalizer"
+│     "mutating ENV"
+│     "@threads"
+│     "isnothing"
+│     "sleep"
+│     "unlock"
+│     "yield"
+│     "@sync"
+│     "interpolation in `@warnv_safe_to_log`"
+│     "closure capture by reference"
+│     "return type annotation"
+│     "splatting"
+└     "ccall"
+1 potential threat was found: 0 fatal violations, 0 violations and 1 recommendation
+Note that the list above only shows fatal violations
+ReLint found non-fatal violations
+```
+
+Three pre-commit hooks are provided in `.pre-commit-hooks.yaml`. You
+can modify or extend them by writing your own hooks file.
+  
+## Getting Started
+
+### Installation
+
+ReLint is not yet registered in the Julia package system. It can be installed with `Pkg`:
+
+```julia
+using Pkg
+Pkg.add("https://github.com/RelationalAI-oss/ReLint.jl")
+```
+
+### Basic Usage
+
+TODO: README updated until here...
 
 There are several ways to use ReLint.jl. Here are a few usage examples:
 

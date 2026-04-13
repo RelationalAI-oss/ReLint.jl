@@ -86,8 +86,26 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -h|--help)
+      echo "./run_locally.sh <file-name|directory-name> [options]"
+      echo
+      echo "Available options:"
+      echo "-r|--rule          <rule>                           - run a single rule"
+      echo "-rs|--rules        <rule1[(, )? rule]*>             - run a set of rules"
+      echo "-rg|--rule-group   <rule-group-name>                - run a rule group"
+      echo "-rgs|--rule-groups <rule-group1[(, )? rule-group]*> - run a set of rule groups"
+      echo "-h|--help                                           - show this message"
+      exit 0
+    ;;
     -*|--*)
-      echo "Unknown option $1"
+      echo "./run_locally.sh <file-name|directory-name> [options]"
+      echo
+      echo "Available options:"
+      echo "-r|--rule          <rule>                           - run a single rule"
+      echo "-rs|--rules        <rule1[(, )? rule]*>             - run a set of rules"
+      echo "-rg|--rule-group   <rule-group-name>                - run a rule group"
+      echo "-rgs|--rule-groups <rule-group1[(, )? rule-group]*> - run a set of rule groups"
+      echo "-h|--help                                           - show this message"
       exit 1
       ;;
     *)

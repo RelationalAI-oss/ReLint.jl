@@ -46,7 +46,7 @@ include("recommendations.jl")
 include("violations.jl")
 include("fatal.jl")
 
-all_rules() = [
+ALL_RULES::Vector{Rule} = [
     values(RECOMMENDATIONS)...,
     values(VIOLATIONS)...,
     values(FATAL_VIOLATIONS)...,

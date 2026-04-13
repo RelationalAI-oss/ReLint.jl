@@ -228,6 +228,7 @@ struct LintContext
     file_exclusions::Vector{LintFileExclusion}
 
     LintContext(rules::Vector{Rule}) = new(rules, [])
+    LintContext(rule::Rule) = new([rule], [])
     LintContext() = new(all_rules(), [])
     LintContext(a, b) = new(a, b)
 end

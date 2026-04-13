@@ -229,7 +229,7 @@ struct LintContext
 
     LintContext(rules::Vector{Rule}) = new(rules, [])
     LintContext(rule::Rule) = new([rule], [])
-    LintContext() = new(all_rules(), [])
+    LintContext() = new(ALL_RULES, [])
     LintContext(a, b) = new(a, b)
 end
 
@@ -337,6 +337,7 @@ function run_lint(rootpath::String;
                   io::Union{IO, Nothing}=stdout,
                   io_violations::Union{IO, Nothing}=nothing,
                   io_recommendations::Union{IO, Nothing}=nothing,
+                  io_others::Union{IO, Nothing}=nothing,
                   formatter::AbstractFormatter=PlainFormat(),
                   context::LintContext=LintContext())
     # Return if `rootpath` is already linted.
@@ -363,9 +364,12 @@ function run_lint(rootpath::String;
     violation_reports = filter(is_violation, lint_reports)
     recommandation_reports = filter(is_recommendation, lint_reports)
     fatal_violation_reports = filter(is_fatal, lint_reports)
+    other_reports = filter(r -> !is_recommendation(r) && !is_violation(r) && !is_fatal(r),
+                           lint_reports)
     count_violations = length(violation_reports)
     count_recommendations = length(recommandation_reports)
-    count_fatalviolations = length(fatal_violation_reports)
+    count_fatal_violations = length(fatal_violation_reports)
+    count_others = length(other_reports)
     # Print reports to their specific `IO`s.
     io_fatal_violations = isnothing(io_violations) ? io : io_violations
     for r in fatal_violation_reports
@@ -379,11 +383,15 @@ function run_lint(rootpath::String;
     for r in recommandation_reports
         print_report(formatter, io_recommendations, r, result)
     end
+    io_others = isnothing(io_others) ? io : io_others
+    for r in other_reports
+        print_report(formatter, io_others, r, result)
+    end
     # Collect all reports and return the result.
     append!(result, LintGlobalReport(1,
                                      count_violations,
                                      count_recommendations,
-                                     count_fatalviolations,
+                                     count_fatal_violations,
                                      [rootpath],
                                      0,
                                      lint_reports))
@@ -451,7 +459,7 @@ end
                     file_prefix_to_remove::String="",
                     local_files_only::Bool=false,
                     stream_workflowcommand::IO=stdout,
-                    rules::Vector{Rule}=all_rules(),
+                    rules::Vector{Rule}=ALL_RULES,
                     pre_commit_file::String="")
 
 Generate a Markdown report based on the linting all given files. The report is intenteded
@@ -488,7 +496,7 @@ function generate_report(filenames::Vector{String},
                          file_prefix_to_remove::String="",
                          local_files_only::Bool=false,
                          stream_workflowcommand::IO=stdout,
-                         rules::Vector{Rule}=all_rules(),
+                         rules::Vector{Rule}=ALL_RULES,
                          pre_commit_file::String="")
     if isfile(output_filename)
         @error "File $(output_filename) exist already."
@@ -633,6 +641,49 @@ function generate_report(filenames::Vector{String},
     # to close the stream.
     isnothing(json_filename) || close(json_output)
 
+    return nothing
+end
+
+# Registering rules
+# -----------------
+
+"""
+    register_rule!(rule::Rule)
+
+Register a rule to ReLint.
+"""
+function register_rule!(rule::Rule)
+    push!(ALL_RULES, rule)
+    return  nothing
+end
+
+"""
+    register_rules!(rules::Vector{Rule})
+
+Register a set of rules to ReLint.
+"""
+function register_rules!(rules::Vector{Rule})
+    append!(ALL_RULES, rules)
+    return nothing
+end
+
+"""
+    register_rule_group!(rule_group::RuleGroup)
+
+Register a rule group to ReLint.
+"""
+function register_rule_group!(rule_group::RuleGroup)
+    append!(ALL_RULES, collect(values(rule_group)))
+    return nothing
+end
+
+"""
+    register_rule_groups!(rule_groups::Vector{RuleGroup})
+
+Register a set of rule groups to ReLint.
+"""
+function register_rule_groups!(rule_groups::Vector{RuleGroup})
+    [register_rule_group!(rg) for rg in rule_groups]
     return nothing
 end
 

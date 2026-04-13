@@ -678,7 +678,7 @@ end
                     flush(io2)
 
                     re = extract_file_exclusions_from_precommit_file(precommit_full_path)
-                    context = LintContext(ReLint.all_rules(), re)
+                    context = LintContext(ReLint.ALL_RULES, re)
 
                     # Run the linter on the directory
                     str = IOBuffer()
@@ -720,7 +720,7 @@ end
                     flush(io2)
 
                     re = extract_file_exclusions_from_precommit_file(precommit_full_path)
-                    context = LintContext(ReLint.all_rules(), re)
+                    context = LintContext(ReLint.ALL_RULES, re)
 
                     # Run the linter on the directory
                     output_file = tempname()

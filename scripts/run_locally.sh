@@ -6,7 +6,7 @@
 # A rule can be specified using --rule RULE
 # If no rule is provided, then run all the rules.
 
-# EXAMPLE1:
+# Run all rules:
 
 # pwd
 # .../ReLint.jl
@@ -25,22 +25,64 @@
 # ┌ Error: Fatal error discovered
 # └ @ Main none:25
 
-# EXAMPLE2:
-# ./scripts/run_locally.sh dummy/ --rule VIOLATIONS["@async"]
+# Run specific rule:
+# ./scripts/run_locally.sh dummy/ --rule 'VIOLATIONS["@async"]'
+# ./scripts/run_locally.sh dummy/ -r 'VIOLATIONS["@async"]'
 
-# EXAMPLE3:
-# ./scripts/run_locally.sh dummy/
+# Run multiple rules:
+# ./scripts/run_locally.sh dummy/ --rules 'VIOLATIONS["@async"][,] FATAL_VIOLATIONS["unsafe-logging"]'
+# ./scripts/run_locally.sh dummy/ -rs 'VIOLATIONS["@async"][,] FATAL_VIOLATIONS["unsafe-logging"]'
+
+# Run rule group:
+# ./scripts/run_locally.sh dummy/ --rule-group FATAL_VIOLATIONS
+# ./scripts/run_locally.sh dummy/ -rg FATAL_VIOLATIONS
+
+# Run multiple rule groups:
+# ./scripts/run_locally.sh dummy/ --rule-groups 'VIOLATIONS[,] FATAL_VIOLATIONS'
+# ./scripts/run_locally.sh dummy/ -rgs 'VIOLATIONS[,] FATAL_VIOLATIONS'
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # PARSE ARGUMENTS
 RULE=""
+RULES="Rule[]"
+RULE_GROUP_NAME=""
+RULE_GROUP_NAMES=""
 FILES_TO_RUN_FROM_COMMAND_LINE=""
 while [[ $# -gt 0 ]]; do
   # echo "DEBUG: " $1
   case $1 in
     -r|--rule)
-      RULE+="ReLint.$2, "
+      RULE="ReLint.$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -rs|--rules)
+      RULES="["
+      for rule in $2
+      do
+        rule=${rule%,} # remove trailing comma
+        RULES+="ReLint.$rule, "
+      done
+      RULES=${RULES%, } # remove trailing comma and space
+      RULES+="]"
+      shift # past argument
+      shift # past value
+      ;;
+    -rg|--rule-group)
+      RULE_GROUP_NAME+="ReLint.$2, "
+      shift # past argument
+      shift # past value
+      ;;
+    -rgs|--rule-groups)
+      RULE_GROUP_NAMES="["
+      for rule_group in $2
+      do
+        rule_group=${rule_group%,} # remove trailing comma
+        RULE_GROUP_NAMES+="ReLint.$rule_group, "
+      done
+      RULE_GROUP_NAMES=${RULE_GROUP_NAMES%, } # remove trailing comma and space
+      RULE_GROUP_NAMES+="]"
       shift # past argument
       shift # past value
       ;;
@@ -75,10 +117,19 @@ else
     # echo "---"
 fi
 
-# If no rule was set, when we have the empty rule
-# Else, we set it for Julia
-if [[ ! -z "$RULE" ]] ; then
-  RULE="[ $RULE ]"
+# Create the `RULES` array either from the given rule group(s) or from the given rules.
+if [[ ! -z "$RULE_GROUP_NAMES" ]] ; then
+  if [[ -z "$RULES" ]] ; then
+    RULES="append!([collect(values(rg)) for rg in $RULE_GROUP_NAMES]...)";
+  else
+    RULES="append!($RULES, append!([collect(values(rg)) for rg in $RULE_GROUP_NAMES]...))";
+  fi
+elif [[ ! -z "$RULE_GROUP_NAME" ]] ; then
+  if [[ -z "$RULES" ]] ; then
+    RULES="collect(values($RULE_GROUP_NAME))";
+  else
+    RULES="append!($RULES, collect(values($RULE_GROUP_NAME)))";
+  fi
 fi
 
 # Initializing some variables
@@ -87,9 +138,18 @@ RELINTPATH=$(dirname $0)/..
 # Running StaticLint
 echo "FULLNAME SCRIPT                 =" $0
 # echo "FILES_TO_RUN_FROM_COMMAND_LINE  = " $FILES_TO_RUN_FROM_COMMAND_LINE
-echo "RULE                            = $RULE"
+if [[ ! -z "$RULE" ]] ; then
+  echo "RULE                            = $RULE"
+fi
+if [[ ! -z "$RULE_GROUP_NAMES" ]] ; then
+  echo "RULE_GROUP_NAMES                = $RULE_GROUP_NAMES"
+elif [[ ! -z "$RULE_GROUP_NAME" ]] ; then
+  echo "RULE_GROUP_NAME                 = $RULE_GROUP_NAME";
+elif [[ "$RULES" != "Rule[]" ]] ; then
+  echo "RULES                           = $RULES"
+fi
 echo "RELINTPATH PATH                 =" $RELINTPATH
-echo "FILES_TO_RUN                    =" $FILES_TO_RUN
+echo "FILES_TO_RUN                    =" $(cat $FILES_TO_RUN)
 
 echo "About to run ReLint..."
 MAX_RETRIES=5
@@ -113,6 +173,7 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
     end
 
     using ReLint: ReLint, LintContext
+    using Argus: Rule
     result = ReLint.LintGlobalReport()
     all_files_tmp=split(open(io->read(io, String), \"$FILES_TO_RUN\", \"r\"))
     all_files=map(string, all_files_tmp)
@@ -122,9 +183,10 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
     @info \"Running lint on \$(length(all_files)) files\"
 
     formatter = ReLint.PreCommitFormat()
-    context = LintContext($RULE)
+    rules = $RULES
+    context = isempty(rules) ? LintContext($RULE) : LintContext(rules)
     rule_names = [r.name for r in context.rules]
-    @info \"rules\" rule_names
+    @info \"Running rules:\" rule_names
 
     for f in all_files
       ReLint.run_lint(f; result, formatter, context)
@@ -134,6 +196,9 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
       ReLint.print_summary(formatter, stdout, result)
       @error \"Fatal error discovered\"
       exit(1)
+    else
+      ReLint.print_summary(formatter, stdout, result)
+      exit(2)
     end
     exit(0)
   "
@@ -147,6 +212,9 @@ while [[ $ATTEMPT -lt $MAX_RETRIES ]]; do
   elif [[ $EXIT_STATUS -eq 1 ]]; then
     echo "ReLint found fatal violations"
     exit 1
+  elif [[ $EXIT_STATUS -eq 2 ]]; then
+    echo "ReLint found non-fatal violations"
+    exit 0
   else
     echo "ReLint failed with exit code $EXIT_STATUS. Retrying in $RETRY_DELAY seconds..."
     sleep $RETRY_DELAY

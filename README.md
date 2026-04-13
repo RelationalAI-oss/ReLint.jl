@@ -201,145 +201,212 @@ Pkg.add("https://github.com/RelationalAI-oss/ReLint.jl")
 
 ### Basic Usage
 
-TODO: README updated until here...
+The main entry point of `ReLint` is `run_lint`, which runs all
+available linting rules on a given file or directory.
 
-There are several ways to use ReLint.jl. Here are a few usage examples:
+```julia
+julia> using ReLint
 
-```Julia
-ReLint.run_lint_on_text("function f() @async 1 + 2 end ");
----------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
-Line 1, column 14: Use `@spawn` instead of `@async`. /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_1QHeJ2vm1U.jl
-1 potential threat is found: 1 violation and 0 recommendation
+julia> f = tempname() * ".jl";
 
-```
-Replacing `@async` by `@spawn` make ReLint happy:
+julia> write(f, """
+       @generated function f(x)::Any
+           y = unsafe_f(x)
+           return y
+       end
+       """);
 
-```Julia
-julia> ReLint.run_lint_on_text("function f() @spawn 1 + 2 end ");
----------- /var/folders/nz/1c4rst196ws_18tjtfl0yb980000gn/T/jl_gbkLM58LEL.jl
-No potential threats were found.
-----------
-```
-
-ReLint can be run on a file:
-
-```Julia
-ReLint.run_lint("/Users/alexandrebergel/Documents/RAI/raicode13/src/RAICode.jl")
+julia> ReLint.run_lint(f)
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 1, column 1: `@generated` should be used with extreme caution. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 2, column 9: An `unsafe_` function should be called only from an `unsafe_` function. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 1, column 12: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+ReLint.LintGlobalReport(1, 1, 1, 1, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl"], 3, ReLint.LintRuleReport[], "master")
 ```
 
-Note that files directly and indirectly included by `RAICode.jl` are also analyzed.
+A specific set of rules can be given through `LintContext`:
 
-When a directory is provided to `run_lint`, then ReLint will look for Julia files. E.g.,
-
-```Julia
-ReLint.run_lint("/Users/alexandrebergel/Documents/RAI/raicode13/src/")
+```julia
+julia> ReLint.run_lint(f; context=ReLint.LintContext([values(ReLint.RECOMMENDATIONS)...]))
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 1, column 12: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+ReLint.LintGlobalReport(1, 0, 1, 0, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl"], 1, ReLint.LintRuleReport[], "master")
 ```
 
-The expression above outputs 1928 potential threats.
+ReLint's rules are constructs that come from
+[Argus](https://github.com/iuliadmtru/Argus.jl). For more information
+on syntax patterns, rules and rule matching see the [Argus
+documentation](https://github.com/iuliadmtru/Argus.jl?tab=readme-ov-file#argusjl).
 
-## Contributing to ReLint.jl
+The available set of rules can be extended either by adding rules to
+the existing rule groups or by defining new groups:
 
-You may want to contribute to ReLint.jl for many reasons. Here are a few of them:
+```julia
+julia> using Argus: Rule, @pattern
 
-- _A rule needs to be better documented_. It is easy to do so: create a PR to this repository that improves one of the rules defined [HERE]([https://github.com/RelationalAI-oss/ReLint.jl/blob/main/src/linting/extended_checks.jl]). This `extended_checks.jl` file contains all the RAI-specific rules.
-- _A new rule has to be defined_. As a system grows and evolves, new rules may have to be defined. The beginning of the file [extended_checks.jl](https://github.com/RelationalAI-oss/ReLint.jl/blob/main/src/linting/extended_checks.jl) and the section below detail this process. You can always ask `@Alexandre Bergel` on Slack for assistance. Create a new PR with the rule.
+julia> ReLint.RECOMMENDATIONS["my rule"] = Rule(
+           "my rule",
+           "This is my recommendation rule -- don't use `::Any`",
+           @pattern {_}::Any
+       )
+my rule:
+This is my recommendation rule -- don't use `::Any`
 
-## Lint rules
+Pattern:
+[::-i]
+  _:::expr                               :: ~var
+  Any                                    :: Identifier
 
-Several RAI-specific and generic rules are verified on Julia source code.
-A number of Julia keywords are known to be [either incompatible or dangerous when committed into raicode](https://relationalai.atlassian.net/browse/RAI-5839). \
-The Lint rules available to be run on Julia source code may be found in this [FILE](https://github.com/RelationalAI-oss/ReLint.jl/blob/main/src/linting/extended_checks.jl).
+Template:
+<no template>
 
-Adding a new rule is easy. Only the file `src/linting/extended_checks.jl` has to be modified. You need to follow the steps:
-1. Create a subtype of `LintRule`, e.g., `struct AsyncRule <: LintRule end`. Lint rules are dynamically looked up by looking at subtypes of `LintRule`.
-2. Create an overload of `check` to perform the actual check.
+Hooks:
+<no hooks>
 
-Here is an example of a `check`:
 
-```Julia
-check(::AsyncRule, x::EXPR) = generic_check(x, "@async hole_variable", "Use `@spawn` instead of `@async`.")
+julia> ReLint.run_lint(f; context=ReLint.LintContext([values(ReLint.RECOMMENDATIONS)...]))
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 1, column 12: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 1, column 21: This is my recommendation rule -- don't use `::Any` /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+ReLint.LintGlobalReport(1, 0, 2, 0, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl"], 2, ReLint.LintRuleReport[], "master")
+
+julia> MY_GROUP = RuleGroup("my group")
+RuleGroup("my group")
+
+julia> MY_GROUP["my rule"] = Rule(
+           "my rule",
+           "This is my recommendation rule -- don't use `::Any`",
+           @pattern {_}::Any
+       );
+
+julia> ReLint.run_lint(f; context=ReLint.LintContext([values(MY_GROUP)...]))
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+Line 1, column 21: This is my recommendation rule -- don't use `::Any` /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl
+ReLint.LintGlobalReport(1, 0, 1, 0, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_nIHKJ0JiPW.jl"], 1, ReLint.LintRuleReport[], "master")
 ```
 
-The `generic_check` function takes as a second parameter the expression to be searched. The template string `"@async hole_variable"` means that the expression `x` will be matched against the template. The pseudo variable `hole_variable` matches everything. In case you want to match any arbitrary number of arguments, you can use `hole_variable_star` (look at the test for concrete examples).
+> [!NOTE] 
+> Currently, ReLint limits the output of the report to 60 errors. This
+> limit can be increased by setting `MAX_REPORTED_ERRORS` to the
+> desired amount.
 
-If the expression `x` does match the template, then the expression is marked with the error message and used as an output.
+### Defining New Rules
 
-In case the expression must be matched in a particular context, e.g., only with a `const` expression, then you can use a `markers`, e.g.,
-```
-function check(::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,Symbol})
-    # Threads.nthreads() must not be used in a const field, but it is allowed elsewhere
-    haskey(markers, :const) || return
-    generic_check(x, "Threads.nthreads()", "`Threads.nthreads()` should not be used in a constant variable.")
-end
-```
+To learn how to define new rules, see the [Argus documentation on
+rules](https://github.com/iuliadmtru/Argus.jl?tab=readme-ov-file#rules)
 
-The different markers currently supported are:
+Once you have a rule, a set of rules or a rule group, you can register
+them to ReLint:
 
-| Marker  | Value  |
-|:------------- |:---------------|
-| `:const`        | Const variable name  |
-| `:function`         | Function definition name          |
-| `:macro`         | Macro definition name          |
-| `:macrocall`         | Macro call name          |
-| `:filename`         | Path and name of the analyzed file          |
+```julia
+help?> ReLint.register_rule!
+  register_rule!(rule::Rule)
 
-If you wish to run a particular rule only in a directory, you could do:
+  Register a rule to ReLint.
 
-```
-function check(::InitializingWithFunctionRule, x::EXPR, markers::Dict{Symbol,Symbol})
-    isnothing(match(r".*/myfolder/.*", markers[:filename])) || return
-    generic_check(x, "Threads.nthreads()", "`Threads.nthreads()` should not be used in a constant variable.")
-end
-```
+help?> ReLint.register_rules!
+  register_rules!(rules::Vector{Rule})
 
-This will run the `"Threads.nthreads()"` described earlier in all folders except in `myfolder`.
+  Register a set of rules to ReLint.
 
-## Locally disabling ReLint
+help?> ReLint.register_rule_group!
+  register_rule_group!(rule_group::RuleGroup)
 
-ReLint can be locally disabled. For now, only for a given line. E.g.,
+  Register a rule group to ReLint.
 
-```Julia
-function f1()
-    # The following line will not emit an error
-    @async 1 + 2 # lint-disable-line
-end
+help?> ReLint.register_rule_groups!
+  register_rule_groups!(rule_groups::Vector{RuleGroup})
 
-function f2()
-    # lint-disable-next-line
-    @async 1 + 2
-    @async 1 + 2 # This line will emit an error
-end
+  Register a set of rule groups to ReLint.
+
+julia> ReLint.register_rule_group!(MY_GROUP)
+
+julia> ReLint.run_lint(f)
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_GRSpoXwPWl.jl
+Line 1, column 1: `@generated` should be used with extreme caution. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_GRSpoXwPWl.jl
+Line 2, column 9: An `unsafe_` function should be called only from an `unsafe_` function. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_GRSpoXwPWl.jl
+Line 1, column 12: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_GRSpoXwPWl.jl
+Line 1, column 21: This is my recommendation rule -- don't use `::Any` /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_GRSpoXwPWl.jl
+ReLint.LintGlobalReport(1, 1, 1, 1, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_GRSpoXwPWl.jl"], 4, ReLint.LintRuleReport[], "master")
 ```
 
-A specific rule can be locally disabled using `lint-disable-next-line:` taking as an argument
-the message that has to be ignored. Consider this example:
+### Disabling Rules
 
-```Julia
-function f()
-    # lint-disable-next-line: Use `@spawn` instead of `@async`.
-    @async 1 + 1
-end
+Rules can be disabled using `#lint-disable-next-line[:
+<rule-name|rule-message>]` comments.
+
+```julia
+julia> write(f, """
+       # lint-disable-next-line
+       @generated function f(x)::Any
+           y = unsafe_f(x)
+           return y
+       end
+       """);
+
+julia> ReLint.run_lint(f)
+ReLint.LintGlobalReport(1, 0, 0, 0, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl"], 0, ReLint.LintRuleReport[], "master")
+
+julia> write(f, """
+       # lint-disable-next-line: my rule
+       @generated function f(x)::Any
+           y = unsafe_f(x)
+           return y
+       end
+       """);
+
+julia> ReLint.run_lint(f)
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+Line 2, column 1: `@generated` should be used with extreme caution. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+Line 3, column 9: An `unsafe_` function should be called only from an `unsafe_` function. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+Line 2, column 12: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+ReLint.LintGlobalReport(1, 1, 1, 1, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl"], 3, ReLint.LintRuleReport[], "master")
+
+julia> write(f, """
+       # lint-disable-next-line: `@generated` should be used with extreme caution
+       @generated function f(x)::Any
+           y = unsafe_f(x)
+           return y
+       end
+       """);
+
+julia> ReLint.run_lint(f)
+---------- /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+Line 3, column 9: An `unsafe_` function should be called only from an `unsafe_` function. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+Line 2, column 12: Avoid return type annotations `function foo()::Type`. Return type annotations can hurt performance by forcing type conversions. /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+Line 2, column 21: This is my recommendation rule -- don't use `::Any` /var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl
+ReLint.LintGlobalReport(1, 1, 1, 0, ["/var/folders/4p/xtm72jnx4654xybjwm1mpd0h0000gn/T/jl_fwJaTGzSJe.jl"], 3, ReLint.LintRuleReport[], "master")
 ```
 
-The instruction `@async 1 + 1` raises the error: Use `@spawn` instead of `@async`.
-Providing this error msg to the comment `lint-disable-next-line:` disabled it.
+The rule disabling mechanism can be changed. See the [Argus
+documentation](https://github.com/iuliadmtru/Argus.jl?tab=readme-ov-file#disabling-rules)
+for more details.
 
-Note that it is not necessary to have the full message. The beginning of it is enough. As
-such, the code above is equivalent to:
+## Linting Locally
 
-```Julia
-function f()
-    # lint-disable-next-line: Use `@spawn` instead
-    @async 1 + 1
-end
+The `scripts/` directory contains a shell script for running ReLint
+locally.
+
+```
+➜  ./scripts/run_locally.sh -h
+./run_locally.sh <file-name|directory-name> [options]
+
+Available options:
+-r|--rule          <rule>                           - run a single rule
+-rs|--rules        <rule1[(, )? rule]*>             - run a set of rules
+-rg|--rule-group   <rule-group-name>                - run a rule group
+-rgs|--rule-groups <rule-group1[(, )? rule-group]*> - run a set of rule groups
+-h|--help                                           - show this message
 ```
 
-## Integration with GitHub Action
+## Integration With GitHub Actions and Workflows
 
-In addition to being run locally, as described above, ReLint can be run via GitHub
-Action. When a PR is created, ReLint is run on the files modified in this PR and the
-result is posted as a comment.
-Only one report of ReLint is posted in a PR, and it gets updated at each commit.
+ReLint can be run via GitHub Actions. When a PR is created, ReLint is
+run on the files modified in the PR and the result is posted as a
+comment. Only one report is posted per PR, which gets updated at each
+commit.
+
+ReLint provides three pre-commit hooks in `.pre-commit-hooks.yaml`.
 
 ## Editor Integration
 
@@ -416,29 +483,19 @@ julia-mode:
 (add-hook 'julia-mode-hook 'eglot-ensure)
 ```
 
-## Listing all violations
+## Contributing
 
-Currently, ReLint limits the output of the report. In total, the number of reported
-violations and recommendations does not exceed 60. This limit is set by the variable
-`MAX_REPORTED_ERRORS`. You may want to increase it if you wish to have the full report
-from ReLint.
+For bug reports and improvement suggestions, feel free to file an
+issue.
 
-## Fork
+### Adding New Rules or Modifying Existing Rules
 
-This repository was originally a fork of https://github.com/julia-vscode/StaticLint.jl but no code from StaticLint can be found. The decision to
-fork this project instead of directly contributing to it was not taken lightly. First, the
-julia-vscode/StaticLint.jl is not designed to be easily and modularly extended. As such
-extending the original StaticLint with specific rules was not an easy or even feasible
-task.
+If you wish to improve or extend the default set of rules, you can do
+so by modifying the relevant file(s) in the `rules/` directory. Please
+read the [relevant ReLint](#defining-new-rules) and
+[Argus](https://github.com/iuliadmtru/Argus.jl?tab=readme-ov-file#rules)
+documentation before.
 
-## Update process
+### Improving the Interface
 
-Here is a helper for two common processes when updating Lint rules:
-
- - Adding a new non-fatal rule to ReLint:
-   - if the rule should only appear in the PR comment, then simply add the rule to ReLint.jl. No need to update the GitHub repo client.
- - Make a rule block a PR using pre-commit:
-   - Create a rule subtype of `FatalLintRule`. Merge the PR containing this rule in `main` of ReLint.jl
-   - If the rule can be run with other (fatal lint) rules, then you should modify the hook `lint-fatal-checks` in the file `.pre-commit-hooks.yaml`, in ReLint.jl
-   - Create a new tag of the corresponding ReLint.jl's commit and update `.pre-commit-config.yaml` with this new tag in the client.
-   - _If the rule should be run in a pre-commit job_ (in parallel with other pre-commit jobs), then you need to add a hook in the file `.pre-commit-hooks.yaml` in ReLint.jl. You will then need to call this hook in the file `.pre-commit-config.yaml` in the client
+All interface-related code can be found in `src/interface.jl`.

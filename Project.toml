@@ -9,7 +9,7 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
 
 [compat]
-Argus = "0.3.0"
+Argus = "0.4.0"
 Dates = "1.10"
 JuliaSyntax = "1.0.2"
 julia = "1"

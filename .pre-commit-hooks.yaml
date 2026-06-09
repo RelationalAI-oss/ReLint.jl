@@ -2,21 +2,21 @@
   name: lint-checks
   description: Checks for ReLint violations in Julia code base
   language: script
-  entry: ./scripts/run_julia_lint.sh
+  entry: ./scripts/run_locally.sh
   types: [file]
 
 - id: unsafe-log-checks
-  args: [--rule, LogStatementsMustBeSafe]
+  args: [--rule, 'FATAL_VIOLATIONS["unsafe-logging"]']
   name: unsafe-log-checks
   description: Checks for unsafe logs in Julia code base
   language: script
-  entry: ./scripts/run_julia_lint.sh
+  entry: ./scripts/run_locally.sh
   types: [file]
 
 - id: lint-fatal-checks
-  args: [--rule, LogStatementsMustBeSafe, --rule, AssertionStatementsMustBeSafe, --rule, NoinlineAndLiteralRule, --rule, NoReturnInAnonymousFunctionRule, --rule, GeneratedRule, --rule, TodoPrRule]
+  args: [--rule-group, FATAL_VIOLATIONS]
   name: lint-fatal-checks
   description: Checks for fatal violations in Julia code base
   language: script
-  entry: ./scripts/run_julia_lint.sh
+  entry: ./scripts/run_locally.sh
   types: [file]

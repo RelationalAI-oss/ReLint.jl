@@ -1,14 +1,12 @@
 module ReLint
 
-using CSTParser: CSTParser, EXPR
-import InteractiveUtils
+using Argus
+using JuliaSyntax
 
-mutable struct LintMeta
-    error
-    LintMeta() = new(nothing)
-    LintMeta(v) = new(v)
+include("interface.jl")
+
+function __init__()
+    include(joinpath(@__DIR__, "rules/rules.jl"))
 end
 
-include("linting/extended_checks.jl")
-include("interface.jl")
 end

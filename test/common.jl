@@ -1,14 +1,8 @@
-using ReLint: ReLint, run_lint_on_text, comp, convert_offset_to_line,
-    convert_offset_to_line_from_lines, MarkdownFormat, PlainFormat,
-    fetch_value, has_values
+using ReLint: ReLint, run_lint_on_text, MarkdownFormat, PlainFormat
 
-using ReLint: LintResult, LintContext
-import CSTParser
+using ReLint: LintGlobalReport, LintContext
 using Test
 using JSON3
-
-# Reset the caches before running the tests.
-ReLint.reset_static_lint_caches()
 
 function lint_test(source::String, expected_substring::String; verbose=true, directory::String = "", context::LintContext=LintContext())
     io = IOBuffer()
@@ -37,3 +31,8 @@ end
 function lint_has_error_test(source::String, verbose=false; directory::String = "", context::LintContext=LintContext())
     return count_lint_errors(source, verbose; directory, context) > 0
 end
+
+has_values(l::ReLint.LintGlobalReport, a, b, c) =
+    l.files_count == a &&
+    l.violations_count == b &&
+    l.recommendations_count == c

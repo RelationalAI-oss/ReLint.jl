@@ -1,297 +1,182 @@
-using Dates
-using JSON3
+import JSON3
+using Dates: now, UTC
 
 global MAX_REPORTED_ERRORS = 60 # 1_000_000
 
-# Each individual rule violation report
+# Lint report
+# ===========
+
+# Individual rule report
+# ----------------------
+
+"""
+    LintRuleReport
+
+Report of the result of linting one file with one rule.
+"""
 mutable struct LintRuleReport
-    rule::LintRule
+    rule::Rule
     msg::String
     template::String
     file::String
     line::Int64
     column::Int64
-    is_disabled::Bool   # Happens with a comments in the code
-
+    is_disabled::Bool
     offset::Int64
 end
-LintRuleReport(rule::LintRule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
+LintRuleReport(rule::Rule, msg::String) = LintRuleReport(rule, msg, "", "", 0, 0, false, 0)
 
-is_recommendation(::T) where {T <: RecommendationLintRule} = true
-is_recommendation(::T) where {T <: LineRecommendationLintRule} = true
-is_recommendation(_) = false
-is_violation(::T) where {T <: ViolationLintRule} = true
-is_violation(::T) where {T <: LineViolationLintRule} = true
-is_violation(_) = false
-is_fatal(r::T) where {T <: FatalLintRule} = true
-is_fatal(r::T) where {T <: LineFatalLintRule} = true
-is_fatal(_) = false
+"""
+    Argus_result_to_LintRuleReport(rule::Rule, match_result::BindingSet)
+
+Convert a rule match result to a `LintRuleReport`.
+"""
+Argus_result_to_LintRuleReport(rule::Rule, match_result::BindingSet) =
+    LintRuleReport(rule,
+                   rule.description,
+                   "",
+                   JuliaSyntax.filename(match_result),
+                   JuliaSyntax.source_location(match_result)[1],
+                   JuliaSyntax.source_location(match_result)[2],
+                   false,
+                   0)
+
+is_recommendation(r::Rule) = haskey(RECOMMENDATIONS, r.name)
+is_violation(r::Rule) = haskey(VIOLATIONS, r.name)
+is_fatal(r::Rule) = haskey(FATAL_VIOLATIONS, r.name)
 
 is_recommendation(r::LintRuleReport) = is_recommendation(r.rule)
 is_violation(r::LintRuleReport) = is_violation(r.rule)
 is_fatal(r::LintRuleReport) = is_fatal(r.rule)
 
-# File exclusion
-struct LintFileExclusion
-    regex::String
-end
-function should_be_excluded(lfe::LintFileExclusion, filename::String)
-    # isdefined(Main, :Infiltrator) && Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-    return !isnothing(match(Regex(lfe.regex), filename))
-end
-function should_be_excluded(lfes::Vector{LintFileExclusion}, filename::String)
-    return any(lfe -> should_be_excluded(lfe, filename), lfes)
-end
+# Global report
+# -------------
 
-# For a given pre-commit file configuration, the function extract the regex rules
-# that are used to exclude files from the linting process.
-function extract_file_exclusions_from_precommit_file(pre_commit_file::String)
-    # 3 states:
-    #   - outside the ReLint repo entry (initial state)
-    #   - inside the exclusion entry
-    #   - inside the ReLint repo entry and we are in the exclude section
-    state = :outside_repo_entry
+"""
+    LintGlobalReport
 
-    file_exclusions = []
-    open(pre_commit_file, "r") do io
-        for line in eachline(io)
-            if state == :outside_repo_entry
-                # We are outside the ReLint repo entry
-                if contains(line, "lint-fatal-checks")
-                    # We are inside the ReLint repo entry
-                    # @info :inside_repo_entry
-                    state = :inside_repo_entry
-                    continue
-                end
-            elseif state == :inside_repo_entry
-                # @info :inside_repo_entry
-
-                if contains(line, "(?x)^(")
-                    # We are inside the ReLint repo entry
-                    state = :inside_exclusion_entry
-                    continue
-                end
-            elseif state == :inside_exclusion_entry
-                # @info :inside_exclusion_entry
-
-                # We are leaving the exclusion portion
-                if contains(line, ")")
-                    state = :outside_repo_entry
-                    continue
-                end
-                regex_rule = strip(line, ['{', '}', '\n', ' ', '|'])
-                !isempty(regex_rule) && push!(file_exclusions, LintFileExclusion(regex_rule))
-            end
-        end
-    end
-    return file_exclusions
-end
-
-
-# Global result of executing Lint on files and folders
-mutable struct LintResult
+Report of the result of linting multiple files and directories with a set of rules.
+"""
+mutable struct LintGlobalReport
     files_count::Integer
     violations_count::Integer
     recommendations_count::Integer
-    fatalviolations_count::Integer
+    fatal_violations_count::Integer
     linted_files::Vector{String}
     printout_count::Integer
     lintrule_reports::Vector{LintRuleReport}
     branch::String  # The branch on which we got the result
 
-    LintResult(args...) = new(args...)
+    LintGlobalReport(args...) = new(args...)
 end
 
-LintResult() = LintResult(0, 0, 0)
-LintResult(a, b, c) = LintResult(a, b, c, 0)
-LintResult(a, b, c, d) = LintResult(a, b, c, d, String[])
-LintResult(a, b, c, d, e) = LintResult(a, b, c, d, e, 0)
-LintResult(a, b, c, d, e, f) = LintResult(a, b, c, d, e, f, LintRuleReport[])
-LintResult(a, b, c, d, e, f, g) = LintResult(a, b, c, d, e, f, LintRuleReport[], "master")
+LintGlobalReport() = LintGlobalReport(0, 0, 0)
+LintGlobalReport(a, b, c) = LintGlobalReport(a, b, c, 0)
+LintGlobalReport(a, b, c, d) = LintGlobalReport(a, b, c, d, String[])
+LintGlobalReport(a, b, c, d, e) = LintGlobalReport(a, b, c, d, e, 0)
+LintGlobalReport(a, b, c, d, e, f) = LintGlobalReport(a, b, c, d, e, f, LintRuleReport[])
+LintGlobalReport(a, b, c, d, e, f, g) = LintGlobalReport(a, b, c, d, e, f, LintRuleReport[], "master")
 
+# Base overwrites
 
-function Base.append!(l1::LintResult, l2::LintResult)
+function Base.append!(l1::LintGlobalReport, l2::LintGlobalReport)
     l1.files_count += l2.files_count
     l1.violations_count += l2.violations_count
     l1.recommendations_count += l2.recommendations_count
-    l1.fatalviolations_count += l2.fatalviolations_count
+    l1.fatal_violations_count += l2.fatal_violations_count
     Base.append!(l1.linted_files, l2.linted_files)
     Base.append!(l1.lintrule_reports, l2.lintrule_reports)
 
     return l1.printout_count += l2.printout_count
 end
 
-function Base.:(==)(l1::LintResult, l2::LintResult)
+function Base.:(==)(l1::LintGlobalReport, l2::LintGlobalReport)
     return l1.files_count == l2.files_count &&
         l1.violations_count == l2.violations_count &&
         l1.recommendations_count == l2.recommendations_count &&
-        l1.fatalviolations_count == l2.fatalviolations_count &&
+        l1.fatal_violations_count == l2.fatal_violations_count &&
         l1.linted_files == l2.linted_files &&
         l1.printout_count == l2.printout_count &&
         l1.lintrule_reports == l2.lintrule_reports
 end
 
-function is_already_linted(l::LintResult, filename)
-    return filename in l.linted_files
-end
-
-function has_values(l::LintResult, a, b, c)
-    return l.files_count == a &&
-        l.violations_count == b &&
-        l.recommendations_count == c
-end
-
+# Precommit config
+# ================
 
 """
-    lint_file(rootpath, context)
+    LintFileExclusion
 
+Wrapper for a regex matching the names of the files that should be excluded when linting
+during pre-commit.
+"""
+struct LintFileExclusion
+    regex::String
+end
+
+should_be_excluded(lfe::LintFileExclusion, filename::String) =
+    !isnothing(match(Regex(lfe.regex), filename))
+should_be_excluded(lfes::Vector{LintFileExclusion}, filename::String) =
+    any(lfe -> should_be_excluded(lfe, filename), lfes)
 
 """
-lint_file(rootpath, context::LintContext = LintContext()) =
-    lint_text(read(rootpath, String); context, filename = rootpath)
+    extract_file_exclusions_from_precommit_file(pre_commit_file::String)
 
+For a given pre-commit file configuration, extract the regex rules used to exclude files
+from the linting process.
 """
-    lint_text(file_content_string; filename="<string>", context)
+function extract_file_exclusions_from_precommit_file(pre_commit_file::String)
+    # 3 states:
+    #   - outside the ReLint repo entry (initial state);
+    #   - inside the exclusion entry;
+    #   - inside the ReLint repo entry and we are in the exclude section.
+    state = :outside_repo_entry
 
-Runs lint checks on `text`, lints will be reported as comming from
-`file`.
-"""
-function lint_text(file_content_string::AbstractString; filename = "<string>", context = LintContext())
-    ast = CSTParser.parse(file_content_string, true)
-    all_lines = split(file_content_string, "\n")
-
-    markers::Dict{Symbol, String} = Dict(:filename => filename)
-    check_all(ast, markers, context)
-
-    lint_rule_reports = []
-
-    # AST rules
-    for (offset, x) in collect_lint_report(ast)
-        if haserror(x)
-            # The next line should be deleted
-            lint_rule_report = x.meta.error
-            lint_rule_report.offset = offset
-
-            line_number, column, annotation_line = convert_offset_to_line_from_lines(lint_rule_report.offset + 1, all_lines)
-            lint_rule_report.line = line_number
-            lint_rule_report.column = column
-
-            # If the annotation is to disable lint,
-            if annotation_line == "lint-disable-line"
-                # then we disable it.
-            elseif !isnothing(annotation_line) && startswith("lint-disable-line: $(lint_rule_report.msg)", annotation_line)
-                # then we disable it.
-            else
-                # Else we record it.
-                push!(lint_rule_reports, lint_rule_report)
-            end
-        end
-    end
-
-    # Text rules
-    for (line_number, line) in enumerate(all_lines)
-        for rule_type in line_rules(context)
-            rule = rule_type()
-            (is_error, msg) = check(rule, string(line), markers)
-            if is_error
-                # We have a violation
-                lint_rule_report = LintRuleReport(
-                    rule,
-                    msg,
-                    "",
-                    filename,
-                    line_number,
-                    1,
-                    false,
-                    0
-                )
-                push!(lint_rule_reports, lint_rule_report)
-            end
-        end
-    end
-
-    return lint_rule_reports
-end
-get_all_lines_from_filename(filename::String) = open(io -> readlines(io), filename)
-
-# Return (index_line, index_column, annotation) for a given offset in a source
-# Useful in tests?
-function convert_offset_to_line(offset::Integer, source::String)
-    return convert_offset_to_line_from_lines(offset, split(source, "\n"))
-end
-
-# Return the lint next-line annotation, if there is one, at the end of `line`.
-# Return
-#   * `nothing`      if there is no `lint-disable-next-line` annotation.
-#   * ""::SubString  if the end of the line is "lint-disable-next-line".
-#   * s::SubString   if the end of the line is "lint-disable_next_line: $s"
-function annotation_for_next_line(line::AbstractString)
-    if endswith(line, "lint-disable-next-line")
-        return ""
-    end
-    # An annotation must be in a comment and not contain any `#` or `"` characters.
-    m = match(r"# lint-disable-next-line: *([^\"#]+)$", line)
-    return isnothing(m) ? nothing : m[1]
-end
-
-function annotation_for_this_line(line::AbstractString)
-    if endswith(line, "lint-disable-line")
-        return ""
-    end
-    # An annotation must be in a comment and not contain any `#` or `"` characters.
-    m = match(r"#\h*lint-disable-line: *([^\"#]+)$", line)
-    return isnothing(m) ? nothing : m[1]
-end
-
-# Return a triple: (line::Int, column::Int, annotation::Option(String))
-# Return (index_line, index_column, annotation) for a given offset in a source
-#
-# `annotation` could be either `nothing`, "lint-disable-line", or
-# `"lint-disable-line: $ERROR_MSG_TO_IGNORE"`
-#
-# Note: `offset` is measured in codepoints.  The returned `column` is a character
-# offset, not a codepoint offset.
-function convert_offset_to_line_from_lines(offset::Integer, all_lines)
-    offset < 0 && throw(BoundsError("source", offset))
-
-    current_codepoint = 1
-    # In these annotations, "" means "lint-disable-line", a nonempty string `s` means
-    # "lint_disable_line: $s", and nothing means there's no applicable annotation.
-    prev_annotation::Union{Nothing, SubString} = nothing
-    this_annotation::Union{Nothing, SubString} = nothing
-    for (line_number, line) in enumerate(all_lines)
-        this_annotation = annotation_for_this_line(line)
-        # current_codepoint + sizeof(line) is possibly pointing at the newline that isn't
-        # actually stored in `line`.
-        if offset in current_codepoint:(current_codepoint + sizeof(line))
-            index_in_line = offset - current_codepoint + 1 # possibly off the end by 1.
-            if !isnothing(this_annotation)
-                annotation = this_annotation
-            elseif !isnothing(prev_annotation)
-                annotation = prev_annotation
-            else
-                annotation = nothing
-            end
-            if !isnothing(annotation)
-                if annotation == ""
-                    annotation = "lint-disable-line"
-                else
-                    annotation = "lint-disable-line: " * annotation
+    file_exclusions = []
+    open(pre_commit_file, "r") do io
+        for line in eachline(io)
+            if state == :outside_repo_entry
+                # We are outside the ReLint repo entry.
+                if contains(line, "lint-fatal-checks")
+                    # We are inside the ReLint repo entry.
+                    state = :inside_repo_entry
+                    continue
                 end
-            end
-            if index_in_line == sizeof(line) + 1
-                return line_number, length(line) + 1, annotation
-            else
-                return line_number, length(line, 1, index_in_line), annotation
+            elseif state == :inside_repo_entry
+                if contains(line, "(?x)^(")
+                    # We are inside the ReLint repo entry.
+                    state = :inside_exclusion_entry
+                    continue
+                end
+            elseif state == :inside_exclusion_entry
+                # We are leaving the exclusion portion.
+                if contains(line, ")")
+                    state = :outside_repo_entry
+                    continue
+                end
+                regex_rule = strip(line, ['{', '}', '\n', ' ', '|'])
+                !isempty(regex_rule) &&
+                    push!(file_exclusions, LintFileExclusion(regex_rule))
             end
         end
-        prev_annotation = annotation_for_next_line(line)
-        current_codepoint += sizeof(line) + 1 # 1 is for the newline
     end
-    throw(BoundsError("source", offset))
+    return file_exclusions
 end
 
+# Formatting
+# ==========
+
+"""
+    AbstractFormatter
+
+Supertype for all lint report formatters.
+"""
 abstract type AbstractFormatter end
+
+"""
+    PlainFormat <: AbstractFormatter
+
+Default lint report formatter.
+"""
 struct PlainFormat <: AbstractFormatter end
 
 # MarkdownFormat can optionally contains github information. This is useful when a
@@ -300,6 +185,12 @@ struct PlainFormat <: AbstractFormatter end
 # report. This is useful because GitHub Action clones a repository in a folder of the same
 # name. In our case, GHA will create /home/runner/work/raicode/raicode so we need to remove
 # one "raicode" from the fullname.
+"""
+    MarkdownFormat <: AbstractFormatter
+
+Markdown lint report formatter which contains GitHub information such as branch and
+repository. It is useful when the generated report contains Markdown links.
+"""
 struct MarkdownFormat <: AbstractFormatter
     github_branch_name::String
     github_repository_name::String
@@ -316,208 +207,198 @@ struct MarkdownFormat <: AbstractFormatter
     MarkdownFormat(branch::String, repo::String) = new(branch, repo, "", devnull)
 end
 
-# Only show the fatal violations and a summary
+"""
+    PreCommitFormat <: AbstractFormatter
+
+Pre-commit lint report formatter. Only shows fatal violations and a summary.
+"""
 struct PreCommitFormat <: AbstractFormatter end
 
-function print_header(::PreCommitFormat, io::IO, rootpath::String)
-    # printstyled(io, "-" ^ 10 * " $(rootpath)\n", color=:blue)
-    # printstyled(io, "**List of Fatal violations, please address them to commit these files**\n", color=:red)
+# Linting
+# =======
+
+"""
+    LintContext
+
+The lint context containing the set of rules to run and the set of `LintFileExclusion`s,
+if any.
+"""
+struct LintContext
+    rules::Vector{Rule}
+    file_exclusions::Vector{LintFileExclusion}
+
+    LintContext(rules::Vector{Rule}) = new(rules, [])
+    LintContext(rule::Rule) = new([rule], [])
+    LintContext() = new(ALL_RULES, [])
+    LintContext(a, b) = new(a, b)
 end
 
-print_footer(::PreCommitFormat, io::IO) = nothing
-function print_summary(::PreCommitFormat, io::IO, result::LintResult)
-    print_summary(PlainFormat(), io, result)
-    return printstyled(io, "Note that the list above only show fatal violations\n", color = :red)
+"""
+    lint_file(rootpath[, context::LintContext])
+
+Lint the file found at `rootpath`. If a lint context is not specified, use all rules
+defined in ReLint.
+"""
+lint_file(rootpath, context::LintContext=LintContext()) =
+    lint_text(read(rootpath, String); context, filename = rootpath)
+
+"""
+    lint_text(text::String; filename="<string>", context::LintContext=LintContext())
+
+Runs lint checks on `text`. Lints will be reported as comming from `filename`.
+"""
+function lint_text(text::String; filename="<string>", context::LintContext=LintContext())
+    ast = JuliaSyntax.parseall(SyntaxNode, text; filename=filename)
+    ast = Argus._normalise!(ast)
+
+    lint_rule_reports = []
+    match_results = rules_match(context.rules, ast; disabler=relint_disabler)
+    # Remove refactorings.
+    #
+    # TODO: Include refactorings as suggestions.
+    for (rule_name, match_result) in match_results
+        successful_match_results = map(m -> m[1], match_result.matches)
+        rule =
+            context.rules[findfirst(r -> r.name == rule_name, context.rules)]
+        for m in successful_match_results
+            push!(lint_rule_reports, Argus_result_to_LintRuleReport(rule, m))
+        end
+    end
+
+    return lint_rule_reports
 end
 
-function print_report(::PreCommitFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
-    should_print_report(result) || return
-    # Do not print anything if it is not a fatal violation
-    is_fatal(lint_report) || return
-    printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color = :green)
-    print(io, " ")
-    print(io, lint_report.msg)
-    print(io, " ")
-    println(io, lint_report.file)
-    return result.printout_count += 1
-end
+"""
+    run_lint_on_dir(rootpath::String;
+                    result::LintGlobalReport=LintGlobalReport(),
+                    io::Union{IO, Nothing}=stdout,
+                    io_violations::Union{IO, Nothing}=nothing,
+                    io_recommendations::Union{IO, Nothing}=nothing,
+                    formatter::AbstractFormatter=PlainFormat(),
+                    context::LintContext=LintContext())
 
-should_print_report(result) = result.printout_count <= MAX_REPORTED_ERRORS
-
-function _run_lint_on_dir(
-        rootpath::String;
-        result::LintResult = LintResult(),
-        io::Union{IO, Nothing} = stdout,
-        io_violations::Union{IO, Nothing} = nothing,
-        io_recommendations::Union{IO, Nothing} = nothing,
-        formatter::AbstractFormatter = PlainFormat(),
-        context::LintContext = LintContext()
-    )
+Lint the directory found at `rootpath`.
+"""
+function run_lint_on_dir(rootpath::String;
+                         result::LintGlobalReport = LintGlobalReport(),
+                         io::Union{IO, Nothing} = stdout,
+                         io_violations::Union{IO, Nothing} = nothing,
+                         io_recommendations::Union{IO, Nothing} = nothing,
+                         formatter::AbstractFormatter = PlainFormat(),
+                         context::LintContext = LintContext())
     # Exit if we are in .git
     !isnothing(match(r".*/\.git.*", rootpath)) && return result
 
     for (root, dirs, files) in walkdir(rootpath)
         for file in files
             filename = joinpath(root, file)
-            if endswith(filename, ".jl")
-                run_lint(filename; result, io, io_violations, io_recommendations, formatter, context)
-            end
+            endswith(filename, ".jl") &&
+                run_lint(filename;
+                         result,
+                         io,
+                         io_violations,
+                         io_recommendations,
+                         formatter,
+                         context)
         end
 
         for dir in dirs
             p = joinpath(root, dir)
             !isnothing(match(r".*/\.git.*", p)) && continue
-            _run_lint_on_dir(p; result, io, io_violations, io_recommendations, formatter, context)
+            run_lint_on_dir(p;
+                            result,
+                            io,
+                            io_violations,
+                            io_recommendations,
+                            formatter,
+                            context)
         end
     end
     return result
 end
 
-function print_header(::PlainFormat, io::IO, rootpath::String)
-    return printstyled(io, "-"^10 * " $(rootpath)\n", color = :blue)
-end
-
-function print_report(::PlainFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
-    should_print_report(result) || return
-    printstyled(io, "Line $(lint_report.line), column $(lint_report.column):", color = :green)
-    print(io, " ")
-    print(io, lint_report.msg)
-    print(io, " ")
-    println(io, lint_report.file)
-    return result.printout_count += 1
-
-end
-
-function print_summary(
-        ::PlainFormat,
-        io::IO,
-        result::LintResult
-    )
-    nb_rulereports = result.violations_count + result.recommendations_count + result.fatalviolations_count
-    return if iszero(nb_rulereports)
-        printstyled(io, "No potential threats were found.\n", color = :green)
-    else
-        plural = nb_rulereports > 1 ? "s are" : " is"
-        plural_vio = result.violations_count > 1 ? "s" : ""
-        plural_fatal = result.fatalviolations_count > 1 ? "s" : ""
-        plural_rec = result.recommendations_count > 1 ? "s" : ""
-        printstyled(io, "$(nb_rulereports) potential threat$(plural) found: ", color = :red)
-        printstyled(io, "$(result.fatalviolations_count) fatal violation$(plural_fatal), $(result.violations_count) violation$(plural_vio) and $(result.recommendations_count) recommendation$(plural_rec)\n", color = :red)
-    end
-end
-
-function print_footer(::PlainFormat, io::IO)
-    return printstyled(io, "-"^10 * "\n\n", color = :blue)
-end
-
-print_header(::MarkdownFormat, io::IO, rootpath::String) = nothing
-print_footer(::MarkdownFormat, io::IO) = nothing
-
-# Remove a leading '/' if the file starts with one. This is necessary to build the URL
-# Remove the prefix mentioned in the Markdown from the file_name
-function remove_prefix_from_filename(file_name::String, file_prefix_to_remove::String)
-    corrected_file_name = first(file_name) == '/' ? file_name[2:end] : file_name
-    if startswith(corrected_file_name, file_prefix_to_remove)
-        corrected_file_name = corrected_file_name[(length(file_prefix_to_remove) + 1):end]
-    end
-    return corrected_file_name
-end
-
-function remove_prefix_from_filename(file_name::String, format::MarkdownFormat)
-    return remove_prefix_from_filename(file_name, format.file_prefix_to_remove)
-end
-
-function print_report(format::MarkdownFormat, io::IO, lint_report::LintRuleReport, result::LintResult)
-    should_print_report(result) || return
-
-    corrected_file_name = remove_prefix_from_filename(lint_report.file, format)
-
-    coordinates = "Line $(lint_report.line), column $(lint_report.column):"
-    if !isempty(format.github_branch_name) && !isempty(format.github_repository_name)
-        extended_coordinates = "[$(coordinates)](https://github.com/$(format.github_repository_name)/blob/$(format.github_branch_name)/$(corrected_file_name)#L$(lint_report.line))"
-        print(io, " - **$(extended_coordinates)** $(lint_report.msg) $(lint_report.file)\n")
-    else
-        print(io, " - **$(coordinates)** $(lint_report.msg) $(lint_report.file)\n")
-    end
-
-    # Produce workflow command to see results in the PR file changed tab:
-    # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#example-setting-an-error-message
-    println(format.stream_workflowcommand, "::error file=$(corrected_file_name),line=$(lint_report.line),col=$(lint_report.column)::$(lint_report.msg)")
-    return result.printout_count += 1
-end
-
-print_summary(
-    ::MarkdownFormat,
-    io::IO,
-    result::LintResult
-) = nothing
-
-
 """
-    run_lint(rootpath::String; io::IO=stdout, io_violations::Union{IO,Nothing}, io_recommendations::Union{IO,Nothing})
+    run_lint(rootpath::String;
+             io::IO=stdout,
+             io_violations::Union{IO,Nothing},
+             io_recommendations::Union{IO,Nothing})
 
-Run lint rules on a file `rootpath`, which must be an existing non-folder file. Return a
-LintResult.
+Lint the file found at `rootpath`. Return a LintGlobalReport.
 
-Example of use:
-    import ReLint
-    ReLint.run_lint("foo/bar/myfile.jl")
+# Examples
+
+```
+import ReLint
+ReLint.run_lint("foo/bar/myfile.jl")
+```
 """
-function run_lint(
-        rootpath::String;
-        result::LintResult = LintResult(),
-        io::Union{IO, Nothing} = stdout,
-        io_violations::Union{IO, Nothing} = nothing,
-        io_recommendations::Union{IO, Nothing} = nothing,
-        formatter::AbstractFormatter = PlainFormat(),
-        context::LintContext = LintContext()
-    )
-    # If already linted, then we merely exit
+function run_lint(rootpath::String;
+                  result::LintGlobalReport=LintGlobalReport(),
+                  io::Union{IO, Nothing}=stdout,
+                  io_violations::Union{IO, Nothing}=nothing,
+                  io_recommendations::Union{IO, Nothing}=nothing,
+                  io_others::Union{IO, Nothing}=nothing,
+                  formatter::AbstractFormatter=PlainFormat(),
+                  context::LintContext=LintContext())
+    # Return if `rootpath` is already linted.
     rootpath in result.linted_files && return result
-
-    # If we are running Lint on a directory
-    isdir(rootpath) && return _run_lint_on_dir(rootpath; result, io, io_violations, io_recommendations, formatter, context)
-
-    # Check if we have to be run on a Julia file. Simply exit if not.
-    # This simplify the amount of work in GitHub Action
+    # Lint as directory if `rootpath` is a directory.
+    isdir(rootpath) && return run_lint_on_dir(rootpath;
+                                              result,
+                                              io,
+                                              io_violations,
+                                              io_recommendations,
+                                              formatter,
+                                              context)
+    # Don't lint non-Julia files.
     endswith(rootpath, ".jl") || return result
+    # Exclude files as specified by the pre-commit configuration.
+    should_be_excluded(context.file_exclusions, rootpath) && return result
 
-    # We should ignore this file?
-    should_be_excluded(convert(Vector{LintFileExclusion}, context.regex_exclusions), rootpath) && return result
-
-    # We are running Lint on a Julia file
-    lint_reports = ReLint.lint_file(rootpath, context)
+    # Here, `rootpath` is surely an unlinted Julia file.
+    #
+    # Lint the file and print the report.
+    lint_reports = lint_file(rootpath, context)
     isempty(lint_reports) || print_header(formatter, io, rootpath)
-
+    # Extract reports according to rule type.
     violation_reports = filter(is_violation, lint_reports)
     recommandation_reports = filter(is_recommendation, lint_reports)
-    fatalviolation_reports = filter(is_fatal, lint_reports)
-
+    fatal_violation_reports = filter(is_fatal, lint_reports)
+    other_reports = filter(r -> !is_recommendation(r) && !is_violation(r) && !is_fatal(r),
+                           lint_reports)
     count_violations = length(violation_reports)
     count_recommendations = length(recommandation_reports)
-    count_fatalviolations = length(fatalviolation_reports)
-
-    # Fatal reports are printed in io_violations, but first
-    io_tmp = isnothing(io_violations) ? io : io_violations
-    for r in fatalviolation_reports
-        print_report(formatter, io_tmp, r, result)
+    count_fatal_violations = length(fatal_violation_reports)
+    count_others = length(other_reports)
+    # Print reports to their specific `IO`s.
+    io_fatal_violations = isnothing(io_violations) ? io : io_violations
+    for r in fatal_violation_reports
+        print_report(formatter, io_fatal_violations, r, result)
     end
-
-    io_tmp = isnothing(io_violations) ? io : io_violations
+    io_violations = isnothing(io_violations) ? io : io_violations
     for r in violation_reports
-        print_report(formatter, io_tmp, r, result)
+        print_report(formatter, io_violations, r, result)
     end
-
-    io_tmp = isnothing(io_recommendations) ? io : io_recommendations
+    io_recommendations = isnothing(io_recommendations) ? io : io_recommendations
     for r in recommandation_reports
-        print_report(formatter, io_tmp, r, result)
+        print_report(formatter, io_recommendations, r, result)
     end
-
-    # We run Lint on a single file.
-    append!(result, LintResult(1, count_violations, count_recommendations, count_fatalviolations, [rootpath], 0, lint_reports))
+    io_others = isnothing(io_others) ? io : io_others
+    for r in other_reports
+        print_report(formatter, io_others, r, result)
+    end
+    # Collect all reports and return the result.
+    append!(result, LintGlobalReport(1,
+                                     count_violations,
+                                     count_recommendations,
+                                     count_fatal_violations,
+                                     [rootpath],
+                                     0,
+                                     lint_reports))
     return result
 end
 
+# TODO: Remove/replace this.
 """
 file_name corresponds to a file name that is used to create the temporary file. This is
 useful to test some rules that depends on the filename.
@@ -526,10 +407,10 @@ useful to test some rules that depends on the filename.
 """
 function run_lint_on_text(
         source::String;
-        result::LintResult = LintResult(),
+        result::LintGlobalReport = LintGlobalReport(),
         io::Union{IO, Nothing} = stdout,
         formatter::AbstractFormatter = PlainFormat(),
-        directory::String = "",   # temporary directory to be created. If empty, let Julia decide
+        directory::String = "",
         context::LintContext = LintContext()
     )
     io_violations = IOBuffer()
@@ -568,21 +449,412 @@ function run_lint_on_text(
     end
 end
 
-function print_datadog_report(
-        json_output::IO,
-        report_as_string::String,
-        files_count::Integer,
-        violation_count::Integer,
-        recommandation_count::Integer,
-        fatalviolations_count::Integer,
-        branch::String,
-        rules_count::Integer,
+"""
+    generate_report(filenames::Vector{String},
+                    output_filename::String;
+                    json_output::IO=stdout,
+                    json_filename::Union{Nothing, String}=nothing,
+                    github_repository::String="",
+                    branch_name::String="",
+                    file_prefix_to_remove::String="",
+                    local_files_only::Bool=false,
+                    stream_workflowcommand::IO=stdout,
+                    rules::Vector{Rule}=ALL_RULES,
+                    pre_commit_file::String="")
+
+Generate a Markdown report based on the linting all given files. The report is intenteded
+to be posted as a comment on a GitHub PR.
+
+The report could also be generated in JSON format (useful for DataDog).
+
+# Arguments
+
+  - `filenames`: the list of files to be analysed. Only Julia files are linted;
+                 if `local_files_only` is `true`, `filenames` is ignored;
+  - `output_filename`: the file where the Markdown report will be printed;
+                       if the file already exist, no analysis is run;
+  - `json_output`: the output stream where the JSON report should be printed; may be
+                   overridden by `json_filename`;
+  - `json_filename`: the file where the JSON report will be printed;
+  - `github_repository`: the name of the repository where the analysis is run;
+  - `branch_name`: the name of the branch where the analysis is run;
+  - `file_prefix_to_remove`: prefix to remove for all analysed files; this is
+                             because GHAction creates a folder of the same name before
+                             cloning it; this argument can be removed in the future;
+  - `local_files_only`: when set to `true` replace `filenames` with the list of files found
+                        at `.` (`pwd`); used by the github action workflow to run ReLint
+                        on master;
+  - `rules`: the set of lint rules to be run;
+  - `pre_commit_file`: the path to the pre-commit configuration file.
+"""
+function generate_report(filenames::Vector{String},
+                         output_filename::String;
+                         json_output::IO=stdout,
+                         json_filename::Union{Nothing, String}=nothing,
+                         github_repository::String="",
+                         branch_name::String="",
+                         file_prefix_to_remove::String="",
+                         local_files_only::Bool=false,
+                         stream_workflowcommand::IO=stdout,
+                         rules::Vector{Rule}=ALL_RULES,
+                         pre_commit_file::String="")
+    if isfile(output_filename)
+        @error "File $(output_filename) exist already."
+        return nothing
+    end
+
+    if !isnothing(json_filename)
+        if isfile(json_filename)
+            @error "File $(json_filename) exist already, cannot create JSON file."
+            return nothing
+        end
+        json_output = open(json_filename, "w")
+    end
+
+    local errors_count = 0
+    local julia_filenames = local_files_only ?
+        [pwd()] :
+        filter(n -> endswith(n, ".jl"), filenames)
+
+    # Initialise the report.
+    lint_report = LintGlobalReport()
+    lint_report.branch = branch_name
+    # Run the rules and print the report in `output_filename`.
+    open(output_filename, "w") do output_io
+        # Print report header.
+        println(output_io, "## Static analysis report")
+        println(output_io, "**Output of [ReLint.jl]\
+            (https://github.com/RelationalAI-oss/ReLint.jl). \
+            🫵[Want to contribute?]\
+            (https://github.com/RelationalAI-oss/ReLint.jl?tab=readme-ov-file#contributing-to-relintjl)🫵\
+            **\n\
+            Report creation time (UTC): ($(now(UTC)))")
+        # Initialise Markdown formatter.
+        formatter = MarkdownFormat(
+            branch_name,
+            github_repository,
+            file_prefix_to_remove,
+            stream_workflowcommand,
+        )
+        # Set up report buffers for each rule category.
+        io_violations = IOBuffer()
+        io_recommendations = IOBuffer()
+        # Set up the lint context.
+        context = isempty(pre_commit_file) ?
+            LintContext(rules) :
+            LintContext(rules,
+                        extract_file_exclusions_from_precommit_file(pre_commit_file))
+        # Lint all files.
+        for filename in julia_filenames
+            run_lint(filename;
+                     result=lint_report,
+                     io=output_io,
+                     io_violations,
+                     io_recommendations,
+                     formatter,
+                     context)
+        end
+        # Print violation reports.
+        print(output_io, String(take!(io_violations)))
+        # Print recommendation reports.
+        recommendations = String(take!(io_recommendations))
+        if !isempty(recommendations)
+            println(output_io, "\n")
+            println(
+                output_io, """
+                <details>
+                <summary>For PR Reviewer ($(lint_report.recommendations_count))</summary>
+
+                $(recommendations)
+                </details>
+                """
+            )
+        end
+        # Print a warning if not all reports are shown.
+        violation_and_recommendation_reports_count =
+            lint_report.violations_count + lint_report.recommendations_count
+        if violation_and_recommendation_reports_count > lint_report.printout_count
+            println(output_io,
+                    "⚠️Only a subset of the reports are shown⚠️")
+        end
+        # Print summary.
+        if isempty(lint_report.linted_files)
+            println(output_io, "No Julia files were modified or added in this PR.")
+        else
+            errors_count =
+                violation_and_recommendation_reports_count +
+                lint_report.fatal_violations_count
+            ending = length(julia_filenames) == 1 ? "" : "s"
+            if iszero(errors_count)
+                print(output_io, string("🎉No potential threats were found over ",
+                                        length(julia_filenames),
+                                        " Julia file",
+                                        ending,
+                                        ".👍\n"))
+            else
+                ending_recommendations = lint_report.recommendations_count == 1 ? "" : "s"
+                ending_violations = lint_report.violations_count == 1 ? "" : "s"
+                ending_fatal_violations =
+                    lint_report.fatal_violations_count == 1 ? "" : "s"
+                was_or_were = errors_count == 1 ? "was" : "were"
+                ending_files = lint_report.files_count == 1 ? "" : "s"
+                println(output_io, string("🚨**In total, ",
+                                          lint_report.fatal_violations_count,
+                                          " fatal violation",
+                                          ending_fatal_violations,
+                                          ", ",
+                                          lint_report.violations_count,
+                                          " violation",
+                                          ending_violations,
+                                          " and ",
+                                          lint_report.recommendations_count,
+                                          " PR reviewer recommendation",
+                                          ending_recommendations,
+                                          " ",
+                                          was_or_were,
+                                          " found over ",
+                                          lint_report.files_count,
+                                          " Julia file",
+                                          ending_files,
+                                          "**🚨"))
+            end
+        end
+        println(output_io, string(length(rules), " rules were used to build this report."))
+    end
+
+    # Print DataDog report.
+    report_as_string = open(output_filename) do io
+        read(io, String)
+    end
+    print_datadog_report(
+        json_output,
+        report_as_string,
+        lint_report.files_count,
+        lint_report.violations_count,
+        lint_report.recommendations_count,
+        lint_report.fatal_violations_count,
+        lint_report.branch,
+        length(rules),
     )
+
+    # If `json_filename` is provided, we are writing the result in `json_output` and need
+    # to close the stream.
+    isnothing(json_filename) || close(json_output)
+
+    return nothing
+end
+
+# Registering rules
+# -----------------
+
+"""
+    register_rule!(rule::Rule)
+
+Register a rule to ReLint.
+"""
+function register_rule!(rule::Rule)
+    push!(ALL_RULES, rule)
+    return  nothing
+end
+
+"""
+    register_rules!(rules::Vector{Rule})
+
+Register a set of rules to ReLint.
+"""
+function register_rules!(rules::Vector{Rule})
+    append!(ALL_RULES, rules)
+    return nothing
+end
+
+"""
+    register_rule_group!(rule_group::RuleGroup)
+
+Register a rule group to ReLint.
+"""
+function register_rule_group!(rule_group::RuleGroup)
+    append!(ALL_RULES, collect(values(rule_group)))
+    return nothing
+end
+
+"""
+    register_rule_groups!(rule_groups::Vector{RuleGroup})
+
+Register a set of rule groups to ReLint.
+"""
+function register_rule_groups!(rule_groups::Vector{RuleGroup})
+    [register_rule_group!(rg) for rg in rule_groups]
+    return nothing
+end
+
+# Printing
+# --------
+
+# Plain format
+
+print_header(::PlainFormat, io::IO, rootpath::String) =
+    printstyled(io, "-"^10 * " $(rootpath)\n", color = :blue)
+
+print_footer(::PlainFormat, io::IO) =
+    printstyled(io, "-"^10 * "\n\n", color = :blue)
+
+function print_report(::PlainFormat,
+                      io::IO,
+                      lint_report::LintRuleReport,
+                      result::LintGlobalReport)
+    should_print_report(result) || return
+    printstyled(io,
+                "Line $(lint_report.line), column $(lint_report.column):",
+                color = :green)
+    print(io, " ")
+    print(io, lint_report.msg)
+    print(io, " ")
+    println(io, lint_report.file)
+    result.printout_count += 1
+
+    return nothing
+end
+
+function print_summary(::PlainFormat,
+                       io::IO,
+                       result::LintGlobalReport)
+    nb_rulereports =
+        result.recommendations_count +
+        result.violations_count +
+        result.fatal_violations_count
+    if iszero(nb_rulereports)
+        printstyled(io, "No potential threats were found.\n", color = :green)
+    else
+        was_or_were = nb_rulereports == 1 ? " was" : "s were"
+        ending_violations = result.violations_count == 1 ? "" : "s"
+        ending_fata_violations = result.fatal_violations_count == 1 ? "" : "s"
+        ending_recommendations = result.recommendations_count == 1 ? "" : "s"
+        printstyled(io,
+                    string(nb_rulereports, " potential threat$(was_or_were) found: "),
+                    color = :red)
+        printstyled(io,
+                    string(result.fatal_violations_count,
+                           " fatal violation",
+                           ending_fata_violations,
+                           ", ",
+                           result.violations_count,
+                           " violation",
+                           ending_violations,
+                           " and ",
+                           result.recommendations_count,
+                           " recommendation",
+                           ending_recommendations,
+                           "\n"),
+                    color = :red)
+    end
+
+    return nothing
+end
+
+# Markdown format
+
+print_header(::MarkdownFormat, io::IO, rootpath::String) = nothing
+
+print_footer(::MarkdownFormat, io::IO) = nothing
+
+# Remove the leading '/', if any. Remove the prefix mentioned in `generate_report`.
+function remove_prefix_from_filename(file_name::String, file_prefix_to_remove::String)
+    corrected_file_name = first(file_name) == '/' ? file_name[2:end] : file_name
+    if startswith(corrected_file_name, file_prefix_to_remove)
+        corrected_file_name = corrected_file_name[(length(file_prefix_to_remove) + 1):end]
+    end
+    return corrected_file_name
+end
+remove_prefix_from_filename(file_name::String, format::MarkdownFormat) =
+    remove_prefix_from_filename(file_name, format.file_prefix_to_remove)
+
+function print_report(format::MarkdownFormat,
+                      io::IO,
+                      lint_report::LintRuleReport,
+                      result::LintGlobalReport)
+    should_print_report(result) || return nothing
+
+    corrected_file_name = remove_prefix_from_filename(lint_report.file, format)
+    coordinates = "Line $(lint_report.line), column $(lint_report.column):"
+    if !isempty(format.github_branch_name) && !isempty(format.github_repository_name)
+        coordinates = string("[",
+                             coordinates,
+                             "](https://github.com/",
+                             format.github_repository_name,
+                             "/blob/",
+                             format.github_branch_name,
+                             "/",
+                             corrected_file_name,
+                             "#L",
+                             lint_report.line,
+                             ")")
+    end
+    print(io, " - **$(coordinates)** $(lint_report.msg) $(lint_report.file)\n")
+    # Produce workflow command to see results in the PR file changed tab:
+    # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#example-setting-an-error-message
+    println(format.stream_workflowcommand,
+            string("::error file=",
+                   corrected_file_name,
+                   ",line=",
+                   lint_report.line,
+                   ",col=",
+                   lint_report.column,
+                   "::",
+                   lint_report.msg))
+    result.printout_count += 1
+
+    return nothing
+end
+
+print_summary(::MarkdownFormat, io::IO, result::LintGlobalReport) = nothing
+
+# Pre-commit format
+
+print_header(::PreCommitFormat, io::IO, rootpath::String) = nothing
+
+print_footer(::PreCommitFormat, io::IO) = nothing
+
+function print_summary(::PreCommitFormat, io::IO, result::LintGlobalReport)
+    print_summary(PlainFormat(), io, result)
+    return printstyled(io,
+                       "Note that the list above only shows fatal violations\n",
+                       color = :red)
+end
+
+function print_report(::PreCommitFormat,
+                      io::IO,
+                      lint_report::LintRuleReport,
+                      result::LintGlobalReport)
+    should_print_report(result) || return nothing
+    # Only print fatal violations.
+    is_fatal(lint_report) || return nothing
+    printstyled(io,
+                "Line $(lint_report.line), column $(lint_report.column):",
+                color = :green)
+    print(io, " ")
+    print(io, lint_report.msg)
+    print(io, " ")
+    println(io, lint_report.file)
+    result.printout_count += 1
+
+    return nothing
+end
+
+# DataDog
+
+function print_datadog_report(json_output::IO,
+                              report_as_string::String,
+                              files_count::Integer,
+                              violation_count::Integer,
+                              recommandation_count::Integer,
+                              fatalviolations_count::Integer,
+                              branch::String,
+                              rules_count::Integer)
     event = Dict(
         :source => "ReLint",
         :specversion => "1.1",
         :type => "result",
-        :time => string(now(UTC)), #Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SSZ"), # RFC3339 format
+        :time => string(now(UTC)),
         :data => Dict(
             :report_as_string => report_as_string,
             :files_count => files_count,
@@ -590,187 +862,13 @@ function print_datadog_report(
             :recommandation_count => recommandation_count,
             :fatalviolations_count => fatalviolations_count,
             :branch => branch,
-            :rules_count => rules_count, # Added in specversion 1.1
+            :rules_count => rules_count,
         )
     )
+
     return println(json_output, JSON3.write(event))
 end
 
-"""
-    generate_report(filenames::Vector{String}, output_filename::String;...)
+# Utils
 
-Main entry point of ReLint.jl. The function `generate_report` takes as argument a list
-of files on which lint has to process. A report is generated containing the result of the
-Lint analysis.
-
-The procuded markdown report is intenteded to be posted as a comment on a GitHub PR.
-Furthermore, a JSON report file is produced to feed DataDog.
-
-Here are the arguments:
-
-    - `filenames` is the list of all the file that have to be analyzed. From this lint
-only Julia files are considered. Filenames provided to that list that do not end with `.jl`
-will be simply ignored. Note that this variable is not considered if
-`analyze_all_file_found_locally` is set to true.
-    - `output_filename` is the file to be created that will contains the Markdown report.
-If the file already exist, then the no analysis is run.
-    - `json_output` is an output stream to which the JSON report has to be printed. Note
-that the value provided to this variable may be overriden by `json_filename`. In the future,
-the variable `json_output` can be removed.
-    - `json_filename` file is a filename used to create the JSON report for DataDog
-    - `github_repository` is the name of the repository, e.g., `raicode`
-    - `branch_name` is a GitHub branch name, useful for the reporting
-    - `file_prefix_to_remove` prefix to remove for all the file to be analyzed. This is
-because GHAction creates a folder of the same name before cloning it. However, this
-option can be removed in the future with a simple `cd` in that folder.
-    - `analyze_all_file_found_locally`, when set to `true` the `filenames` argument  is not
-used and instead all the file found locally, from `.` will be analyzed. This is used by
-the github action workflow to run Lint on master.
-
-When provided, `github_repository` and `branch_name` are used to have clickable links in
-the Markdown report.
-"""
-function generate_report(
-        filenames::Vector{String},
-        output_filename::String
-        ;
-        json_output::IO = stdout,
-        json_filename::Union{Nothing, String} = nothing,  # Override `json_output` when not nothing
-        github_repository::String = "",
-        branch_name::String = "",
-        file_prefix_to_remove::String = "",
-        analyze_all_file_found_locally::Bool = false,
-        stream_workflowcommand::IO = stdout,
-        rules_to_run::Vector{DataType} = all_extended_rule_types[],
-        pre_commit_file::String = "",
-    )
-    if isfile(output_filename)
-        @error "File $(output_filename) exist already."
-        return
-    end
-
-    if !isnothing(json_filename)
-        if isfile(json_filename)
-            @error "File $(json_filename) exist already, cannot create json file."
-            return
-        end
-        json_output = open(json_filename, "w")
-    end
-
-    local errors_count = 0
-    local julia_filenames = filter(n -> endswith(n, ".jl"), filenames)
-
-    # Result of the whole analysis
-    lint_result = LintResult()
-    lint_result.branch = branch_name
-
-    # If analyze_all_file_found_locally is set to true, we discard all the provided files
-    # and analyze everything accessible from "."
-    if analyze_all_file_found_locally
-        julia_filenames = [pwd()]
-    end
-
-    open(output_filename, "w") do output_io
-        println(output_io, "## Static code analyzer report")
-        println(output_io, "**Output of the [ReLint.jl code analyzer]\
-            (https://github.com/RelationalAI-oss/ReLint.jl). \
-            🫵[Want to contribute?](https://github.com/RelationalAI-oss/ReLint.jl/blob/main/README.md#contributing-to-staticlintjl)🫵 \
-            [RelationalAI Style Guide for Julia](https://github.com/RelationalAI/RAIStyle)**\n\
-            Report creation time (UTC): ($(now(UTC)))")
-
-
-        formatter = MarkdownFormat(
-            branch_name,
-            github_repository,
-            file_prefix_to_remove,
-            stream_workflowcommand,
-        )
-
-        io_violations = IOBuffer()
-        io_recommendations = IOBuffer()
-
-        context = nothing
-        if !isempty(pre_commit_file)
-            context = LintContext(
-                rules_to_run,
-                extract_file_exclusions_from_precommit_file(pre_commit_file)
-            )
-        else
-            context = LintContext(rules_to_run)
-        end
-
-        # RUN LINT!!!
-        for filename in julia_filenames
-            ReLint.run_lint(
-                filename;
-                result = lint_result,
-                io = output_io,
-                io_violations = io_violations,
-                io_recommendations = io_recommendations,
-                formatter,
-                context
-            )
-        end
-        print(output_io, String(take!(io_violations)))
-
-        recommendations = String(take!(io_recommendations))
-        if !isempty(recommendations)
-            println(output_io, "\n")
-            println(
-                output_io, """
-                <details>
-                <summary>For PR Reviewer ($(lint_result.recommendations_count))</summary>
-
-                $(recommendations)
-                </details>
-                """
-            )
-        end
-
-        has_julia_file = !isempty(lint_result.linted_files)
-
-        if lint_result.violations_count + lint_result.recommendations_count > lint_result.printout_count
-            println(output_io, "⚠️Only a subset of the violations and recommandations are here reported⚠️")
-        end
-
-        ending = length(julia_filenames) > 1 ? "s" : ""
-        if !has_julia_file
-            println(output_io, "No Julia file is modified or added in this PR.")
-        else
-            errors_count = lint_result.violations_count +
-                lint_result.recommendations_count +
-                lint_result.fatalviolations_count
-            if iszero(errors_count)
-                print(output_io, "🎉No potential threats are found over $(length(julia_filenames)) Julia file$(ending).👍\n\n")
-            else
-                s_vio = lint_result.violations_count > 1 ? "s" : ""
-                s_rec = lint_result.recommendations_count > 1 ? "s" : ""
-                s_fvio = lint_result.fatalviolations_count > 1 ? "s" : ""
-                is_or_are = errors_count == 1 ? "is" : "are"
-                s_fil = lint_result.files_count > 1 ? "s" : ""
-                println(output_io, "🚨**In total, $(lint_result.fatalviolations_count) fatal rule violation$(s_fvio), $(lint_result.violations_count) rule violation$(s_vio) and $(lint_result.recommendations_count) PR reviewer recommendation$(s_rec) $(is_or_are) found over $(lint_result.files_count) Julia file$(s_fil)**🚨")
-            end
-        end
-
-
-        println(output_io, "$(length(rules_to_run)) rules were used to build this report")
-    end
-
-    report_as_string = open(output_filename) do io
-        read(io, String)
-    end
-    print_datadog_report(
-        json_output,
-        report_as_string,
-        lint_result.files_count,
-        lint_result.violations_count,
-        lint_result.recommendations_count,
-        lint_result.fatalviolations_count,
-        lint_result.branch,
-        length(rules_to_run),
-    )
-
-    # If a json_filename was provided, we are writing the result in json_output.
-    # In that case, we need to close the stream at the end.
-    return isnothing(json_filename) || close(json_output)
-end
+should_print_report(result) = result.printout_count <= MAX_REPORTED_ERRORS

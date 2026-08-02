@@ -1,0 +1,42 @@
+name: Run ReLint
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-relint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+          arch: x64
+
+      - name: Cache Julia packages
+        uses: julia-actions/cache@v2
+
+      - name: Instantiate package dependencies
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run ReLint on a smoke-test file
+        run: |
+          cat > /tmp/relint-smoke.jl <<'EOF'
+          @generated function f(x)::Int
+              y = unsafe_f(x)
+              return y
+          end
+          EOF
+          ./scripts/run_locally.sh /tmp/relint-smoke.jl --rule 'VIOLATIONS["unsafe_ function"]'

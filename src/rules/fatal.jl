@@ -216,7 +216,7 @@ FATAL_VIOLATIONS["noinline with non-literal/identifier args"] = Rule(
     "noinline with non-literal/identifier args",
     """
     For call-site `@noinline` call, all args must be literals or identifiers only. \
-    Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).
+    Pull complex args out to top-level.
     """,
     @pattern {n:::noinline_with_non_lit_or_id_args}
 )
@@ -248,7 +248,7 @@ register_syntax_class!(:do_call_with_return, SyntaxClass(
 
 FATAL_VIOLATIONS["return in anonymous function"] = Rule(
     "return in anonymous function",
-    "Anonymous function must not have `return` [Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure).",
+    "Anonymous function must not have `return`.",
     @pattern ~or(
         ({_}...) -> begin
             {_}...

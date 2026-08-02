@@ -79,13 +79,6 @@ RECOMMENDATIONS["splatting"] = Rule(
     )
 )
 
-# InterpolationInSafeLogRule
-RECOMMENDATIONS["interpolation in `@warnv_safe_to_log`"] = Rule(
-    "interpolation in `@warnv_safe_to_log`",
-    "Safe warning log has interpolation.",
-    @pattern @warnv_safe_to_log {_} "$({_}...)$({x:::identifier})$({_}...)"
-)
-
 # ReturnTypeAnnotationRule
 RECOMMENDATIONS["return type annotation"] = Rule(
     "return type annotation",

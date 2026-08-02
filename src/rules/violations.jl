@@ -17,14 +17,6 @@ VIOLATIONS["initializing with `nthreads`"] = Rule(
     "`Threads.nthreads()` should not be used in a constant variable.",
     @pattern const {_} = Threads.nthreads()
 )
-VIOLATIONS["initializing with `is_local_deployment`"] = Rule(
-    "initializing with `is_local_deployment`",
-    "`is_local_deployment()` should not be used in a constant variable.",
-    @pattern ~or(
-        :(const {_} = is_local_deployment()),
-        :(const {_} = Deployment.is_local_deployment())
-    )
-)
 
 # ArrayWithNoTypeRule
 VIOLATIONS["array with no specific type"] = Rule(
@@ -40,13 +32,6 @@ VIOLATIONS["array with no specific type"] = Rule(
     Dict(
         :only_in_dirs => ["src/Compiler"]
     )
-)
-
-# RemovePageRule
-VIOLATIONS["remove_page"] = Rule(
-    "remove_page",
-    "`remove_page` should be used with extreme caution.",
-    @pattern remove_page({_}, {_})
 )
 
 # TaskRule
@@ -95,40 +80,6 @@ VIOLATIONS["unsafe_ function"] = Rule(
             {_:::unsafe_funcall} = {_},
             function ({_:::unsafe_funcall}) {_}... end
         )))
-    )
-)
-
-# InRule
-VIOLATIONS["in"] = Rule(
-    "in",
-    "Use `tin(item,collection)` instead of the Julia's `in` or `∈`.",
-    @pattern ~or(
-        in({_}, {_}),
-        ∈({_}, {_})
-    )
-)
-
-# HasKeyRule
-VIOLATIONS["haskey"] = Rule(
-    "haskey",
-    "Use `thaskey(dict,key)` instead of the Julia's `haskey`.",
-    @pattern haskey({_}, {_})
-)
-
-# EqualRule
-VIOLATIONS["equal"] = Rule(
-    "equal",
-    "Use `tequal(dict,key)` instead of the Julia's `equal`.",
-    @pattern equal({_}, {_})
-)
-
-# UvRule
-VIOLATIONS["uv"] = Rule(
-    "uv",
-    "`uv_` functions should be used with extreme caution.",
-    @pattern ~and(
-        {f:::funcall},
-        ~when([:f], startswith(f.fun_name.name, "uv_"))
     )
 )
 
@@ -196,46 +147,6 @@ VIOLATIONS["string interpolation"] = Rule(
     )
 )
 
-# RelPathAPIUsageRule
-VIOLATIONS["RelPath"] = Rule(
-    "RelPath",
-    "Usage of type `RelPath` is not allowed in this context.",
-    (@pattern ~or(
-        {_}::RelPath,
-        RelPath({_}),
-        RelPath({_}, {_})
-    )),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-VIOLATIONS["RelPath split_path"] = Rule(
-    "RelPath split_path",
-    "Usage of `RelPath` API method `split_path` is not allowed in this context.",
-    (@pattern split_path({_})),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-VIOLATIONS["RelPath drop_first"] = Rule(
-    "RelPath drop_first",
-    "Usage of `RelPath` API method `drop_first` is not allowed in this context.",
-    (@pattern drop_first({_})),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-VIOLATIONS["RelPath relpath_from_signature"] = Rule(
-    "RelPath relpath_from_signature",
-    """
-    Usage of `RelPath` API method `relpath_from_signature` is not allowed \
-    in this context.""",
-    (@pattern relpath_from_signature({_})),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-
 # UseOfStaticThreads
 VIOLATIONS["static threads"] = Rule(
     "static threads",
@@ -253,16 +164,6 @@ VIOLATIONS["no import"] = Rule(
     "no import",
     "Imports must be specified with `using` and not `import`.",
     @pattern {_:::import}
-)
-
-# NotImportingRAICodeRule
-VIOLATIONS["no import RAICode"] = Rule(
-    "no import RAICode",
-    "Importing RAICode should be avoided (when possible).",
-    @pattern begin
-        {u:::using}
-        @when [:u] u.module.module_name == "RAICode"
-    end
 )
 
 # BareUsingRule
@@ -344,10 +245,4 @@ VIOLATIONS["not fully parametrised constructor"] = Rule(
         :only_in_dirs => ["src/Compiler"],
         :exclude_files => ["test/", "test.jl"]
     )
-)
-
-VIOLATIONS["TODO"] = Rule(
-    "TODO",
-    "Use `TODO (RAI-XXXXX)` instead of `TODO` to refer to a Jira issue.",
-    @comment r"TODO(?!:?\s*\(RAI-\d+\))[\S\s]*"
 )

@@ -257,9 +257,3 @@ FATAL_VIOLATIONS["return in anonymous function"] = Rule(
         {_:::do_call_with_return}
     )
 )
-
-FATAL_VIOLATIONS["TODO PR"] = Rule(
-    "TODO PR",
-    "Use `TODO (RAI-XXXXX)` instead of `TODO PR` to refer to a Jira issue.",
-    @comment r"TODO \(?PR\)?[\S\s]*"
-)

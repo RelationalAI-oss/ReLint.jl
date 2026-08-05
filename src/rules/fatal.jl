@@ -1,14 +1,11 @@
 FATAL_VIOLATIONS = RuleGroup("fatal violations")
 
-# GeneratedRule
 FATAL_VIOLATIONS["@generated"] = Rule(
     "@generated",
     "`@generated` should be used with extreme caution.",
     @pattern @generated {_}...
 )
 
-# LogStatementsMustBeSafe
-#
 # TODO: Syntax classes with parameters (e.g. macrocall(r"@info|@warn|@error|@debug")).
 register_syntax_class!(:log_macro, SyntaxClass(
     "log macro",
@@ -68,8 +65,6 @@ FATAL_VIOLATIONS["unsafe-logging"] = Rule(
     end
 )
 
-# AssertionStatementsMustBeSafe
-#
 # TODO: Syntax classes with parameters (e.g. macrocall(r"@assert|@dassert")).
 register_syntax_class!(:assert_macro, SyntaxClass(
     "assert macro",
@@ -103,8 +98,6 @@ FATAL_VIOLATIONS["unsafe-assert"] = Rule(
     end
 )
 
-# MustNotUseShow
-#
 # TODO: Template.
 FATAL_VIOLATIONS["show"] = Rule(
     "show",
@@ -112,7 +105,6 @@ FATAL_VIOLATIONS["show"] = Rule(
     @pattern @show {_}...
 )
 
-# NoinlineAndLiteralRule
 register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
     "@nonline call with non lit or id args",
     [
@@ -221,7 +213,6 @@ FATAL_VIOLATIONS["noinline with non-literal/identifier args"] = Rule(
     @pattern {n:::noinline_with_non_lit_or_id_args}
 )
 
-# NoReturnInAnonymousFunctionRule
 register_syntax_class!(:do_call_with_return, SyntaxClass(
     "do call with explicit `return`",
     [

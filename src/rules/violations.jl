@@ -1,7 +1,5 @@
 VIOLATIONS = RuleGroup("violations")
 
-# AsyncRule
-#
 # TODO: Template for `@spawn`.
 VIOLATIONS["@async"] = Rule(
     "@async",
@@ -9,8 +7,6 @@ VIOLATIONS["@async"] = Rule(
     @pattern ~or(@async({_}), Threads.@async({_}))
 )
 
-# InitializingWithFunctionRule
-#
 # TODO: Pattern variables in rule messages.
 VIOLATIONS["initializing with `nthreads`"] = Rule(
     "initializing with `nthreads`",
@@ -18,7 +14,6 @@ VIOLATIONS["initializing with `nthreads`"] = Rule(
     @pattern const {_} = Threads.nthreads()
 )
 
-# ArrayWithNoTypeRule
 VIOLATIONS["array with no specific type"] = Rule(
     "array with no specific type",
     "Need a specific Array type to be provided.",
@@ -34,14 +29,12 @@ VIOLATIONS["array with no specific type"] = Rule(
     )
 )
 
-# TaskRule
 VIOLATIONS["Task"] = Rule(
     "Task",
     "`Task` should be used with extreme caution.",
     @pattern Task({_})
 )
 
-# ErrorExceptionRule
 VIOLATIONS["ErrorException"] = Rule(
     "ErrorException",
     "Use custom exception instead of the generic `ErrorException`.",
@@ -51,7 +44,6 @@ VIOLATIONS["ErrorException"] = Rule(
     )
 )
 
-# ErrorRule
 VIOLATIONS["error"] = Rule(
     "error",
     "Use custom exception instead of the generic `error()`.",
@@ -61,7 +53,6 @@ VIOLATIONS["error"] = Rule(
     )
 )
 
-# UnsafeRule
 register_syntax_class!(:unsafe_funcall, SyntaxClass(
     "`unsafe_*` function call",
     [
@@ -83,8 +74,6 @@ VIOLATIONS["unsafe_ function"] = Rule(
     )
 )
 
-# UnreachableBranchRule
-#
 # TODO: Find a way to express this in its most general form. Something like:
 #
 # @pattern ~or(
@@ -137,7 +126,6 @@ VIOLATIONS["unreachable branch"] = Rule(
     )
 )
 
-# StringInterpolationRule
 VIOLATIONS["string interpolation"] = Rule(
     "string interpolation",
     "Use \$(x) instead of \$x.",
@@ -147,7 +135,6 @@ VIOLATIONS["string interpolation"] = Rule(
     )
 )
 
-# UseOfStaticThreads
 VIOLATIONS["static threads"] = Rule(
     "static threads",
     """
@@ -159,14 +146,12 @@ VIOLATIONS["static threads"] = Rule(
     )
 )
 
-# NoImportRule
 VIOLATIONS["no import"] = Rule(
     "no import",
     "Imports must be specified with `using` and not `import`.",
     @pattern {_:::import}
 )
 
-# BareUsingRule
 VIOLATIONS["bare using"] = Rule(
     "bare using",
     "Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.",
@@ -179,7 +164,6 @@ VIOLATIONS["bare using"] = Rule(
     )
 )
 
-# UntypedArrayComprehensionRule
 VIOLATIONS["untyped array comprehension"] = Rule(
     "untyped array comprehension",
     """
@@ -191,7 +175,6 @@ VIOLATIONS["untyped array comprehension"] = Rule(
     )
 )
 
-# ConstGlobalMissingTypeRule
 register_syntax_class!(:const, SyntaxClass(
     "const assignment",
     [
@@ -213,7 +196,6 @@ VIOLATIONS["non-const untyped global"] = Rule(
     )
 )
 
-# NotFullyParameterizedConstructorRule
 register_syntax_class!(:loop, SyntaxClass(
     "`for` or `while` loop",
     [

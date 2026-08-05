@@ -1,69 +1,59 @@
 RECOMMENDATIONS = RuleGroup("recommendations")
 
-# CcallRule
 RECOMMENDATIONS["ccall"] = Rule(
     "ccall",
     "`ccall` should be used with extreme caution.",
     @pattern ccall({_}...)
 )
 
-# FinalizerRule
 RECOMMENDATIONS["finalizer"] = Rule(
     "finalizer",
     "`finalizer(_,_)` should not be used.",
     @pattern finalizer({_}...)
 )
 
-# CFunctionRule
 RECOMMENDATIONS["@cfunction"] = Rule(
     "@cfunction",
     "`@cfunction` should not be used.",
     @pattern @cfunction({_}...)
 )
 
-# UnlockRule
 RECOMMENDATIONS["unlock"] = Rule(
     "unlock",
     "`unlock` should be used with extreme caution.",
     @pattern unlock({_})
 )
 
-# YieldRule
 RECOMMENDATIONS["yield"] = Rule(
     "yield",
     "`yield` should be used with extreme caution.",
     @pattern yield()
 )
 
-# SleepRule
 RECOMMENDATIONS["sleep"] = Rule(
     "sleep",
     "`sleep` should be used with extreme caution.",
     @pattern sleep({_})
 )
 
-# InboundsRule
 RECOMMENDATIONS["@inbounds"] = Rule(
     "@inbounds",
     "`@inbounds` should be used with extreme caution.",
     @pattern @inbounds({_})
 )
 
-# ThreadsRule
 RECOMMENDATIONS["@threads"] = Rule(
     "@threads",
     "`@threads` should be used with extreme caution.",
     @pattern ~or(@threads({_}), Threads.@threads({_}))
 )
 
-# SyncRule
 RECOMMENDATIONS["@sync"] = Rule(
     "@sync",
     "`@sync` should be used with extreme caution.",
     @pattern ~or(@sync({_}), Threads.@sync({_}))
 )
 
-# SplattingRule
 RECOMMENDATIONS["splatting"] = Rule(
     "splatting",
     """
@@ -79,7 +69,6 @@ RECOMMENDATIONS["splatting"] = Rule(
     )
 )
 
-# ReturnTypeAnnotationRule
 RECOMMENDATIONS["return type annotation"] = Rule(
     "return type annotation",
     """
@@ -97,7 +86,6 @@ RECOMMENDATIONS["return type annotation"] = Rule(
     )
 )
 
-# StringConcatenationRule
 RECOMMENDATIONS["string concatenation"] = Rule(
     "string concatenation",
     """
@@ -112,11 +100,6 @@ RECOMMENDATIONS["string concatenation"] = Rule(
     )
 )
 
-# NoGlobalVariablesRule
-#
-# Removed because it is too similar to "non-const untyped global" in `VIOLATIONS`.
-
-# IsNothingPerformanceRule
 RECOMMENDATIONS["isnothing"] = Rule(
     "isnothing",
     """
@@ -129,7 +112,6 @@ RECOMMENDATIONS["isnothing"] = Rule(
     )
 )
 
-# ClosureCaptureByValueRule
 RECOMMENDATIONS["closure capture by reference"] = Rule(
     "closure capture by reference",
     """
@@ -154,7 +136,6 @@ RECOMMENDATIONS["closure capture by reference"] = Rule(
     )
 )
 
-# AccessingENVRuleq
 RECOMMENDATIONS["mutating ENV"] = Rule(
     "mutating ENV",
     """

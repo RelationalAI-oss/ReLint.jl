@@ -248,7 +248,7 @@ lint_file(rootpath, context::LintContext=LintContext()) =
 Runs lint checks on `text`. Lints will be reported as comming from `filename`.
 """
 function lint_text(text::String; filename="<string>", context::LintContext=LintContext())
-    ast = JuliaSyntax.parseall(SyntaxNode, text; filename=filename)
+    ast = JuliaSyntax.parseall(SyntaxNode, text; filename=filename, ignore_warnings=true)
     ast = Argus._normalise!(ast)
 
     lint_rule_reports = []

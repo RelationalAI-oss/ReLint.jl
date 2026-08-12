@@ -230,8 +230,9 @@ register_syntax_class!(:do_call_with_return, SyntaxClass(
              @when [:f] begin
                  isempty(f.args.src) && return false
                  do_node = f.args.src[end]
-                 return kind(do_node) == K"do" &&
-                     kind(do_node.children[2].children[end]) == K"return"
+                 kind(do_node) == K"do" || return false
+                 isempty(do_node.children[2].children) && return false
+                 return kind(do_node.children[2].children[end]) == K"return"
              end
          end),
         (@pattern begin
@@ -239,8 +240,9 @@ register_syntax_class!(:do_call_with_return, SyntaxClass(
              @when [:m] begin
                  isempty(m.args) && return false
                  do_node = m.args[end]
-                 return kind(do_node) == K"do" &&
-                     kind(do_node.children[2].children[end]) == K"return"
+                 kind(do_node) == K"do" || return false
+                 isempty(do_node.children[2].children) && return false
+                 return kind(do_node.children[2].children[end]) == K"return"
              end
          end)
     ]

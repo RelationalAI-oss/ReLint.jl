@@ -1,42 +1,75 @@
+# This workflow run the ReLint.jl on the file modified by the PR
+
 name: Run ReLint
 
 on:
+  pull_request:
   push:
     branches:
       - master
-      - main
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
-  run-relint:
-    runs-on: ubuntu-latest
+  run_lint:
+    if: ${{ github.event_name == 'push' || !contains(github.event.pull_request.labels.*.name, 'build:nolint') }}
 
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/spot=false/extras=s3-cache
+    permissions:
+      pull-requests: write
+      contents: read
     steps:
-      - name: Checkout repository
+      - uses: runs-on/action@v2
+      - name: Checkout current repository
         uses: actions/checkout@v4
+        with:
+          path: raicode
 
-      - name: Set up Julia
+      - name: Checkout ReLint.jl
+        uses: actions/checkout@v4
+        with:
+          repository: RelationalAI-oss/ReLint.jl
+          ssh-key: ${{ secrets.DELVECI_SSH }}
+          path: ReLint.jl
+
+      - name: Install Julia
         uses: julia-actions/setup-julia@v2
         with:
-          version: '1'
-          arch: x64
+          version: '1.10'
 
-      - name: Cache Julia packages
-        uses: julia-actions/cache@v2
+      - name: Get changed files
+        id: changed-files
+        if: github.event_name != 'push'
+        uses: tj-actions/changed-files@v46
 
-      - name: Instantiate package dependencies
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
-
-      - name: Run ReLint on a smoke-test file
+      - name: List all changed files
+        if: github.event_name != 'push'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          cat > /tmp/relint-smoke.jl <<'EOF'
-          @generated function f(x)::Int
-              y = unsafe_f(x)
-              return y
-          end
-          EOF
-          ./scripts/run_locally.sh /tmp/relint-smoke.jl --rule 'VIOLATIONS["unsafe_ function"]'
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "raicode/$file" >> files_to_run_lint.txt
+            echo "$file was changed"
+          done
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_OUTPUT"
+        id: extract_branch
+
+      # if the branch is master, then we evaluate the whole codebase,
+      # specified as fourth argument
+      - name: Run lint
+        run: |
+          bash raicode/scripts/run_lint.sh \
+              "RelationalAI-oss/raicode" \
+              ${{ steps.extract_branch.outputs.branch }} \
+              "raicode/" \
+              ${{ steps.extract_branch.outputs.branch == 'master' }} \
+              "secrets.OBSERVE_BEARER" \
+              "$PWD/raicode/.pre-commit-config.yaml"
+
+      - uses: mshick/add-pr-comment@v2
+        if: github.event_name != 'push'
+        with:
+          message-path: result.txt
+          refresh-message-position: true
+

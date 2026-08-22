@@ -20,8 +20,9 @@ annotated node.
 
 See also: `Argus.default_disabler`
 """
-relint_disabler(line::AbstractString) = is_disable_all_comment(line)
+relint_disabler(line::AbstractString) = is_disable_all_comment(strip(line))
 function relint_disabler(rule::Rule, line::AbstractString)
+    line = strip(line)
     is_disable_comment(line) || return false
     is_disable_all_comment(line) && return true
     is_disable_rule_comment(line, rule) && return true

@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   run_lint:
@@ -18,17 +18,8 @@ jobs:
       pull-requests: write
       contents: read
     steps:
-      - uses: runs-on/action@v2
       - name: Checkout current repository
         uses: actions/checkout@v4
-        with:
-          path: raicode
-
-      - name: Checkout ReLint.jl
-        uses: actions/checkout@v4
-        with:
-          repository: RelationalAI-oss/ReLint.jl
-          path: ReLint.jl
 
       - name: Install Julia
         uses: julia-actions/setup-julia@v2
@@ -46,7 +37,7 @@ jobs:
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           for file in ${ALL_CHANGED_FILES}; do
-            echo "raicode/$file" >> files_to_run_lint.txt
+            echo "$file" >> files_to_run_lint.txt
             echo "$file was changed"
           done
 
@@ -55,21 +46,22 @@ jobs:
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_OUTPUT"
         id: extract_branch
 
+      - name: Debugging
+        run: |
+          echo "Branch: ${{ steps.extract_branch.outputs.branch }}"
+          echo "Changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "PWD=$PWD"
+
       # if the branch is master, then we evaluate the whole codebase,
       # specified as fourth argument
       - name: Run lint
         run: |
-          bash raicode/scripts/run_lint.sh \
-              "RelationalAI-oss/raicode" \
-              ${{ steps.extract_branch.outputs.branch }} \
-              "raicode/" \
-              ${{ steps.extract_branch.outputs.branch == 'master' }} \
-              "secrets.OBSERVE_BEARER" \
-              "$PWD/raicode/.pre-commit-config.yaml"
+          bash ./scripts/run_locally.sh `cat files_to_run_lint.txt`
 
-      - uses: mshick/add-pr-comment@v2
-        if: github.event_name != 'push'
-        with:
-          message-path: result.txt
-          refresh-message-position: true
+
+      # - uses: mshick/add-pr-comment@v2
+      #   if: github.event_name != 'push'
+      #   with:
+      #     message-path: result.txt
+      #     refresh-message-position: true
 

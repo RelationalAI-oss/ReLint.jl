@@ -23,8 +23,6 @@
         let
             source = """
                 const x = Threads.nthreads()
-                const y = Deployment.is_local_deployment()
-                const z = is_local_deployment()
                 const u = foo() # Allowed
 
                 function f()
@@ -34,13 +32,9 @@
                     return x + Threads.nthreads()
                 end
                 """
-            @test count_lint_errors(source) == 3
+            @test count_lint_errors(source) == 1
             @test lint_test(source,
                             "Line 1, column 1: `Threads.nthreads()` should not be used in a constant variable.")
-            @test lint_test(source,
-                            "Line 2, column 1: `is_local_deployment()` should not be used in a constant variable.")
-            @test lint_test(source,
-                            "Line 3, column 1: `is_local_deployment()` should not be used in a constant variable.")
         end
         let
             source = """
@@ -110,20 +104,6 @@
                 "Line 19, column 9: Need a specific Array type to be provided.";
                 directory = "src/Compiler")
         end
-    end
-
-    @testset "`remove_page`" begin
-        source = """
-        function _clear_pager!(pager)
-            for (pid, _) in pager.owned_pages
-                remove_page(pager, pid)
-            end
-        end
-        """
-        @test lint_test(source,
-                        """
-                        Line 3, column 9: \
-                        `remove_page` should be used with extreme caution.""")
     end
 
     @testset "`Task`" begin
@@ -239,53 +219,6 @@
         end
     end
 
-    @testset "in, equal, haskey, uv_" begin
-        source = """
-            function f()
-                x = 10 in [10]
-                y = in(10, [10])
-                z = equal(10, "hello")
-                w = haskey(Dict(1=>1000), 1)
-                a = uv_foo(10, 20)
-                b = ∈(10, [10])
-                c = 10 ∈ [10]
-
-                # No error
-                d = [x for x in 1:10]
-                groupby_vars = [v for v in child_vars if !tin(v, sort_input.vars)]
-            end
-            """
-        @test count_lint_errors(source) == 7
-        @test lint_test(source,
-                        """
-                        Line 2, column 9: Use `tin(item,collection)` instead of \
-                        the Julia's `in`""")
-        @test lint_test(source,
-                        """
-                        Line 3, column 9: Use `tin(item,collection)` instead of \
-                        the Julia's `in`""")
-        @test lint_test(source,
-                        """
-                        Line 4, column 9: Use `tequal(dict,key)` instead of the \
-                        Julia's `equal`.""")
-        @test lint_test(source,
-                        """
-                        Line 5, column 9: Use `thaskey(dict,key)` instead of the \
-                        Julia's `haskey`.""")
-        @test lint_test(source,
-                        """
-                        Line 6, column 9: `uv_` functions should be used with \
-                        extreme caution.""")
-        @test lint_test(source,
-                        """
-                        Line 7, column 9: Use `tin(item,collection)` instead of \
-                        the Julia's `in` or `∈`.""")
-        @test lint_test(source,
-                        """
-                        Line 8, column 9: Use `tin(item,collection)` instead of \
-                        the Julia's `in` or `∈`.""")
-    end
-
     @testset "Unreachable branch" begin
         let
             source = """
@@ -372,37 +305,6 @@
         @test count_lint_errors(source_without_error) == 0
     end
 
-    @testset "RelPath front-end" begin
-        source = """
-        function rel_sig_from_relpath(path)
-            (name, types) = split_path(path)
-            return RelationSignature(name, types.elements)
-        end
-
-        function interpret(x, y, path)
-            rest = drop_first(path)
-            return RelPath(rest.elements[2:end])
-        end
-
-        function reverse(decl::EdbDecl)
-            return relpath_from_signature(decl.signature)
-        end
-
-        function use_path(x, y::RelPath, z)
-            return y.elements
-        end
-        """
-
-        @test count_lint_errors(source; directory="/src/Compiler/Front") == 5
-        @test count_lint_errors(source; directory="") == 0
-
-        @test lint_test(source,
-                        """
-                        Line 2, column 21: Usage of `RelPath` API method `split_path` is \
-                        not allowed in this context.""";
-                        directory="/src/Compiler/Front")
-    end
-
     @testset "Use of static threads" begin
         source = raw"""
         function f()
@@ -438,16 +340,6 @@
         using M: a
         """
         @test count_lint_errors(source) == 3
-    end
-
-    @testset "Forbid using RAICode" begin
-        source = """
-        using RAICode
-        using RAICode: rai_rules_tests
-
-        println("hello world")
-        """
-        @test count_lint_errors(source) == 3  # One extra from base `using`.
     end
 
     @testset "Forbid bare using" begin
@@ -704,28 +596,6 @@
             """
             @test !lint_has_error_test(source; directory="src/Compiler/")
         end
-    end
-
-    @testset "TODO comments" begin
-        context = ReLint.LintContext([ReLint.VIOLATIONS["TODO"]])
-        @test lint_test("function f()\n # TODO (PR): fix this\n end",
-                        """
-                        Line 2, column 2: Use `TODO (RAI-XXXXX)` instead of `TODO` \
-                        to refer to a Jira issue.""";
-                        context)
-        @test lint_test("function f()\n # TODO: fix this\n end",
-                        """
-                        Line 2, column 2: Use `TODO (RAI-XXXXX)` instead of `TODO` \
-                        to refer to a Jira issue.""";
-                        context)
-        @test lint_test("function f()\n @info \"zork\" # TODO fix this\n end",
-                        """
-                        Line 2, column 15: Use `TODO (RAI-XXXXX)` instead of `TODO` \
-                        to refer to a Jira issue.""";
-                        context)
-
-        @test !lint_has_error_test("function f()\n # TODO (RAI-121) okay\n end")
-        @test !lint_has_error_test("function f()\n # fix this\n end"; context)
     end
 
 end

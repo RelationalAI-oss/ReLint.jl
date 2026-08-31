@@ -1,14 +1,11 @@
 FATAL_VIOLATIONS = RuleGroup("fatal violations")
 
-# GeneratedRule
 FATAL_VIOLATIONS["@generated"] = Rule(
     "@generated",
     "`@generated` should be used with extreme caution.",
     @pattern @generated {_}...
 )
 
-# LogStatementsMustBeSafe
-#
 # TODO: Syntax classes with parameters (e.g. macrocall(r"@info|@warn|@error|@debug")).
 register_syntax_class!(:log_macro, SyntaxClass(
     "log macro",
@@ -68,8 +65,6 @@ FATAL_VIOLATIONS["unsafe-logging"] = Rule(
     end
 )
 
-# AssertionStatementsMustBeSafe
-#
 # TODO: Syntax classes with parameters (e.g. macrocall(r"@assert|@dassert")).
 register_syntax_class!(:assert_macro, SyntaxClass(
     "assert macro",
@@ -103,8 +98,6 @@ FATAL_VIOLATIONS["unsafe-assert"] = Rule(
     end
 )
 
-# MustNotUseShow
-#
 # TODO: Template.
 FATAL_VIOLATIONS["show"] = Rule(
     "show",
@@ -112,7 +105,6 @@ FATAL_VIOLATIONS["show"] = Rule(
     @pattern @show {_}...
 )
 
-# NoinlineAndLiteralRule
 register_syntax_class!(:noinline_with_non_lit_or_id_args, SyntaxClass(
     "@nonline call with non lit or id args",
     [
@@ -216,12 +208,11 @@ FATAL_VIOLATIONS["noinline with non-literal/identifier args"] = Rule(
     "noinline with non-literal/identifier args",
     """
     For call-site `@noinline` call, all args must be literals or identifiers only. \
-    Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).
+    Pull complex args out to top-level.
     """,
     @pattern {n:::noinline_with_non_lit_or_id_args}
 )
 
-# NoReturnInAnonymousFunctionRule
 register_syntax_class!(:do_call_with_return, SyntaxClass(
     "do call with explicit `return`",
     [
@@ -250,7 +241,7 @@ register_syntax_class!(:do_call_with_return, SyntaxClass(
 
 FATAL_VIOLATIONS["return in anonymous function"] = Rule(
     "return in anonymous function",
-    "Anonymous function must not have `return` [Explanation](https://github.com/RelationalAI/RAIStyle#returning-from-a-closure).",
+    "Anonymous function must not have `return`.",
     @pattern ~or(
         ({_}...) -> begin
             {_}...
@@ -258,10 +249,4 @@ FATAL_VIOLATIONS["return in anonymous function"] = Rule(
         end,
         {_:::do_call_with_return}
     )
-)
-
-FATAL_VIOLATIONS["TODO PR"] = Rule(
-    "TODO PR",
-    "Use `TODO (RAI-XXXXX)` instead of `TODO PR` to refer to a Jira issue.",
-    @comment r"TODO \(?PR\)?[\S\s]*"
 )

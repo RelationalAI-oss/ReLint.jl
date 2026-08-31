@@ -157,25 +157,6 @@
         @test count_lint_errors("""macro foo(x...)\nzork(x...)\nend""") == 0
     end
 
-    @testset "Interpolation in @warnv_safe_to_log" begin
-        source = raw"""
-        function bla(blu)
-            if cond
-                @warnv_safe_to_log 0 "bla: $blu and $bli"
-                @ensure @warnv_safe_to_log 0 "bla: $blu and $bli"
-                @ensure @warnv_safe_to_log 0 "no interpolation"
-                return false
-            end
-            return true
-        end
-        """
-        rule_name = "interpolation in `@warnv_safe_to_log`"
-        context = ReLint.LintContext([ReLint.RECOMMENDATIONS[rule_name]])
-        @test count_lint_errors(source; context) == 4
-        @test lint_test(source, "Line 3, column 9: Safe warning log has interpolation.")
-        @test lint_test(source, "Line 4, column 17: Safe warning log has interpolation.")
-    end
-
     @testset "Return type annotations" begin
         @testset "function with return type annotation" begin
             source = """

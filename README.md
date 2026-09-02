@@ -196,7 +196,7 @@ ReLint is not yet registered in the Julia package system. It can be installed wi
 
 ```julia
 using Pkg
-Pkg.add("https://github.com/RelationalAI-oss/ReLint.jl")
+Pkg.add(url = "https://github.com/RelationalAI-oss/ReLint.jl")
 ```
 
 ### Basic Usage

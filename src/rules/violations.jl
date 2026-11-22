@@ -1,7 +1,5 @@
 VIOLATIONS = RuleGroup("violations")
 
-# AsyncRule
-#
 # TODO: Template for `@spawn`.
 VIOLATIONS["@async"] = Rule(
     "@async",
@@ -9,24 +7,13 @@ VIOLATIONS["@async"] = Rule(
     @pattern ~or(@async({_}), Threads.@async({_}))
 )
 
-# InitializingWithFunctionRule
-#
 # TODO: Pattern variables in rule messages.
 VIOLATIONS["initializing with `nthreads`"] = Rule(
     "initializing with `nthreads`",
     "`Threads.nthreads()` should not be used in a constant variable.",
     @pattern const {_} = Threads.nthreads()
 )
-VIOLATIONS["initializing with `is_local_deployment`"] = Rule(
-    "initializing with `is_local_deployment`",
-    "`is_local_deployment()` should not be used in a constant variable.",
-    @pattern ~or(
-        :(const {_} = is_local_deployment()),
-        :(const {_} = Deployment.is_local_deployment())
-    )
-)
 
-# ArrayWithNoTypeRule
 VIOLATIONS["array with no specific type"] = Rule(
     "array with no specific type",
     "Need a specific Array type to be provided.",
@@ -42,21 +29,12 @@ VIOLATIONS["array with no specific type"] = Rule(
     )
 )
 
-# RemovePageRule
-VIOLATIONS["remove_page"] = Rule(
-    "remove_page",
-    "`remove_page` should be used with extreme caution.",
-    @pattern remove_page({_}, {_})
-)
-
-# TaskRule
 VIOLATIONS["Task"] = Rule(
     "Task",
     "`Task` should be used with extreme caution.",
     @pattern Task({_})
 )
 
-# ErrorExceptionRule
 VIOLATIONS["ErrorException"] = Rule(
     "ErrorException",
     "Use custom exception instead of the generic `ErrorException`.",
@@ -66,7 +44,6 @@ VIOLATIONS["ErrorException"] = Rule(
     )
 )
 
-# ErrorRule
 VIOLATIONS["error"] = Rule(
     "error",
     "Use custom exception instead of the generic `error()`.",
@@ -76,7 +53,6 @@ VIOLATIONS["error"] = Rule(
     )
 )
 
-# UnsafeRule
 register_syntax_class!(:unsafe_funcall, SyntaxClass(
     "`unsafe_*` function call",
     [
@@ -98,42 +74,6 @@ VIOLATIONS["unsafe_ function"] = Rule(
     )
 )
 
-# InRule
-VIOLATIONS["in"] = Rule(
-    "in",
-    "Use `tin(item,collection)` instead of the Julia's `in` or `∈`.",
-    @pattern ~or(
-        in({_}, {_}),
-        ∈({_}, {_})
-    )
-)
-
-# HasKeyRule
-VIOLATIONS["haskey"] = Rule(
-    "haskey",
-    "Use `thaskey(dict,key)` instead of the Julia's `haskey`.",
-    @pattern haskey({_}, {_})
-)
-
-# EqualRule
-VIOLATIONS["equal"] = Rule(
-    "equal",
-    "Use `tequal(dict,key)` instead of the Julia's `equal`.",
-    @pattern equal({_}, {_})
-)
-
-# UvRule
-VIOLATIONS["uv"] = Rule(
-    "uv",
-    "`uv_` functions should be used with extreme caution.",
-    @pattern ~and(
-        {f:::funcall},
-        ~when([:f], startswith(f.fun_name.name, "uv_"))
-    )
-)
-
-# UnreachableBranchRule
-#
 # TODO: Find a way to express this in its most general form. Something like:
 #
 # @pattern ~or(
@@ -186,7 +126,6 @@ VIOLATIONS["unreachable branch"] = Rule(
     )
 )
 
-# StringInterpolationRule
 VIOLATIONS["string interpolation"] = Rule(
     "string interpolation",
     "Use \$(x) instead of \$x.",
@@ -196,47 +135,6 @@ VIOLATIONS["string interpolation"] = Rule(
     )
 )
 
-# RelPathAPIUsageRule
-VIOLATIONS["RelPath"] = Rule(
-    "RelPath",
-    "Usage of type `RelPath` is not allowed in this context.",
-    (@pattern ~or(
-        {_}::RelPath,
-        RelPath({_}),
-        RelPath({_}, {_})
-    )),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-VIOLATIONS["RelPath split_path"] = Rule(
-    "RelPath split_path",
-    "Usage of `RelPath` API method `split_path` is not allowed in this context.",
-    (@pattern split_path({_})),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-VIOLATIONS["RelPath drop_first"] = Rule(
-    "RelPath drop_first",
-    "Usage of `RelPath` API method `drop_first` is not allowed in this context.",
-    (@pattern drop_first({_})),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-VIOLATIONS["RelPath relpath_from_signature"] = Rule(
-    "RelPath relpath_from_signature",
-    """
-    Usage of `RelPath` API method `relpath_from_signature` is not allowed \
-    in this context.""",
-    (@pattern relpath_from_signature({_})),
-    Dict(
-        :only_in_dirs => ["src/Compiler/Front"]
-    )
-)
-
-# UseOfStaticThreads
 VIOLATIONS["static threads"] = Rule(
     "static threads",
     """
@@ -248,24 +146,12 @@ VIOLATIONS["static threads"] = Rule(
     )
 )
 
-# NoImportRule
 VIOLATIONS["no import"] = Rule(
     "no import",
     "Imports must be specified with `using` and not `import`.",
     @pattern {_:::import}
 )
 
-# NotImportingRAICodeRule
-VIOLATIONS["no import RAICode"] = Rule(
-    "no import RAICode",
-    "Importing RAICode should be avoided (when possible).",
-    @pattern begin
-        {u:::using}
-        @when [:u] u.module.module_name == "RAICode"
-    end
-)
-
-# BareUsingRule
 VIOLATIONS["bare using"] = Rule(
     "bare using",
     "Use `using Foo: Foo` or `using Foo: specific_function` instead of bare `using Foo`.",
@@ -278,7 +164,6 @@ VIOLATIONS["bare using"] = Rule(
     )
 )
 
-# UntypedArrayComprehensionRule
 VIOLATIONS["untyped array comprehension"] = Rule(
     "untyped array comprehension",
     """
@@ -290,7 +175,6 @@ VIOLATIONS["untyped array comprehension"] = Rule(
     )
 )
 
-# ConstGlobalMissingTypeRule
 register_syntax_class!(:const, SyntaxClass(
     "const assignment",
     [
@@ -312,7 +196,6 @@ VIOLATIONS["non-const untyped global"] = Rule(
     )
 )
 
-# NotFullyParameterizedConstructorRule
 register_syntax_class!(:loop, SyntaxClass(
     "`for` or `while` loop",
     [
@@ -344,10 +227,4 @@ VIOLATIONS["not fully parametrised constructor"] = Rule(
         :only_in_dirs => ["src/Compiler"],
         :exclude_files => ["test/", "test.jl"]
     )
-)
-
-VIOLATIONS["TODO"] = Rule(
-    "TODO",
-    "Use `TODO (RAI-XXXXX)` instead of `TODO` to refer to a Jira issue.",
-    @comment r"TODO(?!:?\s*\(RAI-\d+\))[\S\s]*"
 )

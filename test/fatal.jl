@@ -181,17 +181,17 @@
         """
 
         @test count_lint_errors(source) == 11
-        @test lint_test(source, "Line 2, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 3, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 4, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 5, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 6, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 7, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 8, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 9, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 10, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 11, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
-        @test lint_test(source, "Line 12, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level. [RAI-35086](https://relationalai.atlassian.net/browse/RAI-35086).")
+        @test lint_test(source, "Line 2, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 3, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 4, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 5, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 6, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 7, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 8, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 9, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 10, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 11, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
+        @test lint_test(source, "Line 12, column 5: For call-site `@noinline` call, all args must be literals or identifiers only. Pull complex args out to top-level.")
     end
 
     @testset "Return in anonymous functions" begin
@@ -220,17 +220,17 @@
             """
             @test count_lint_errors(source) == 6
             @test lint_test(source,
-                            "Line 6, column 5: Anonymous function must not have `return` [Explanation](https")
+                            "Line 6, column 5: Anonymous function must not have `return`")
             @test lint_test(source,
-                            "Line 7, column 1: Anonymous function must not have `return` [Explanation](https")
+                            "Line 7, column 1: Anonymous function must not have `return`")
             @test lint_test(source,
-                            "Line 8, column 1: Anonymous function must not have `return` [Explanation](https")
+                            "Line 8, column 1: Anonymous function must not have `return`")
             @test lint_test(source,
-                            "Line 15, column 6: Anonymous function must not have `return` [Explanation](https")
+                            "Line 15, column 6: Anonymous function must not have `return`")
             @test lint_test(source,
-                            "Line 16, column 1: Anonymous function must not have `return` [Explanation](https")
+                            "Line 16, column 1: Anonymous function must not have `return`")
             @test lint_test(source,
-                            "Line 19, column 1: Anonymous function must not have `return` [Explanation](https")
+                            "Line 19, column 1: Anonymous function must not have `return`")
         end
         let
             source = """
@@ -241,29 +241,6 @@
             """
             @test count_lint_errors(source) == 0
         end
-    end
-
-    @testset "TODO PR" begin
-        context = ReLint.LintContext([ReLint.FATAL_VIOLATIONS["TODO PR"]])
-        @test lint_test("function f()\n # TODO (PR): fix this\n end",
-                        """
-                        Line 2, column 2: Use `TODO (RAI-XXXXX)` instead of `TODO PR` \
-                        to refer to a Jira issue.""";
-                        context)
-        @test lint_test("function f()\n # TODO PR: fix this\n end",
-                        """
-                        Line 2, column 2: Use `TODO (RAI-XXXXX)` instead of `TODO PR` \
-                        to refer to a Jira issue.""";
-                        context)
-        @test lint_test("function f()\n @info \"zork\" # TODO PR: fix this\n end",
-                        """
-                        Line 2, column 15: Use `TODO (RAI-XXXXX)` instead of `TODO PR` \
-                        to refer to a Jira issue.""";
-                        context)
-
-        @test !lint_has_error_test("function f()\n # TODO (RAI-121) okay\n end")
-        @test !lint_has_error_test("function f()\n # TODO: fix this\n end"; context)
-        @test !lint_has_error_test("function f()\n # fix this\n end"; context)
     end
 
 end

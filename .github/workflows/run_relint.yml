@@ -1,0 +1,67 @@
+# This workflow run the ReLint.jl on the file modified by the PR
+
+name: Run ReLint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  run_lint:
+    if: ${{ github.event_name == 'push' || !contains(github.event.pull_request.labels.*.name, 'build:nolint') }}
+
+    #runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64/spot=false/extras=s3-cache
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+
+      - name: Install Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+
+      - name: Get changed files
+        id: changed-files
+        if: github.event_name != 'push'
+        uses: tj-actions/changed-files@v46
+
+      - name: List all changed files
+        if: github.event_name != 'push'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file" >> files_to_run_lint.txt
+            echo "$file was changed"
+          done
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_OUTPUT"
+        id: extract_branch
+
+      - name: Debugging
+        run: |
+          echo "Branch: ${{ steps.extract_branch.outputs.branch }}"
+          echo "Changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "PWD=$PWD"
+
+      # if the branch is master, then we evaluate the whole codebase,
+      # specified as fourth argument
+      - name: Run lint
+        run: |
+          bash ./scripts/run_locally.sh `cat files_to_run_lint.txt`
+
+
+      # - uses: mshick/add-pr-comment@v2
+      #   if: github.event_name != 'push'
+      #   with:
+      #     message-path: result.txt
+      #     refresh-message-position: true
+
